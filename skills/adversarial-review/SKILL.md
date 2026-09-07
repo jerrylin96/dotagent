@@ -146,19 +146,19 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 ```text
 ### Reviewer Identity & Session Continuity Directive
 1. If you ALREADY established your REVIEWER_ID in an earlier turn of this session, YOU MUST REUSE IT. Do NOT generate a new ID.
-2. If this is a fresh session, set your ID matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$:
+2. If this is a fresh session, set your ID matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ (no '..' or '.lock'):
    export REVIEWER_ID="reviewer-$(head -c 3 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo $RANDOM)"
 3. MANDATORY CHAT BANNER: In the very first lines of your chat response, you MUST print:
    ### 🪪 Reviewer Identification Proof
    - Reviewer ID: ${REVIEWER_ID}
    - Target SHA Audited: <sha>
    - Review File: reviews/${REVIEWER_ID}.md
-   - Push Commit SHA: <your-push-sha>
+   - Push Commit SHA: <your-push-sha or "pending — confirm post-push">
 
 ### Anti-Collision & Peer Isolation Invariants
 1. FILE ISOLATION: You own ONLY reviews/${REVIEWER_ID}.md. Strictly forbidden to touch peer files in reviews/ or codebase.
 2. TARGETED STAGING: NEVER run git add . or git add -A. Run ONLY git add reviews/${REVIEWER_ID}.md.
-3. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort.
+3. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort. If retries exhausted, fall back to chat markdown.
 ```
 
 ### Subagent Context Compaction Template

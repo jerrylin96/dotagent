@@ -269,7 +269,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
 
 ### Review Delivery Modes: Isolated vs. Shared Branch
 - **Mode A: Isolated Review Branches**: Reviewers operate on `review/${FEATURE_SLUG}/${REVIEWER_ID}` with living `review.md`.
-  - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
+  - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` and MUST NOT contain `..` or end with `.lock`.
   - Double-quote all shell expansions: `"${REVIEWER_ID}"`.
   - Collision check: If `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/${REVIEWER_ID}"` exists, append `-2`.
 - **Mode B: Shared Sandbox Branch Mode**: When all reviewers are pinned by platform to a single shared branch (e.g. Arena.ai):
@@ -280,7 +280,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
   - **Anti-Collision & Peer Isolation Invariants**:
     1. `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md`. Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/`.
     2. `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
-    3. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. Never force-resolve peer files.
+    3. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. If retries are exhausted, fall back to chat markdown or `scratch/external_reviews/<REVIEWER_ID>.md`.
   - **Builder Ingestion Authorship Audit**:
     - When ingesting shared review branches, the builder verifies commit history (`git log --name-only`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
     - If any commit touches, truncates, or deletes peer files or codebase files, the builder flags it as `TAMPERED/CLOBBERED`, rejects the commit, and notifies the user immediately.
@@ -289,6 +289,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
 
 ### Freshness Handshake & Living Status
 - Every review document MUST include `AUDITED_SHA: <sha>` in the header to verify freshness.
+- Before triaging, builder validates `AUDITED_SHA` matches target commit; stale reviews trigger re-audit and are skipped in current triage.
 - Findings are append-only; resolved items are marked `[x] (Resolved in commit <sha>)`.
 
 ### Masked Identity Proof & Session Persistence Protocol
@@ -299,12 +300,13 @@ To make it effortless for the user to correlate anonymous browser tabs (e.g. on 
   - **Reviewer ID**: `reviewer-<id>`
   - **Target SHA Audited**: `<commit-sha>`
   - **Committed Review File**: `reviews/reviewer-<id>.md`
-  - **Push Commit SHA**: `<sha>`
+  - **Push Commit SHA**: `<sha or "pending — confirm post-push">`
   ```
 - **Session Continuity Directive**: On subsequent milestone turns (Spec -> Plan -> Test -> Code), prompts mandate: `Session Continuity Directive: If you already established your REVIEWER_ID in an earlier turn of this chat session, YOU MUST REUSE IT. Do NOT generate a new random ID.`
 - **Traceability Guarantee**: The user can glance at any browser tab, read the top banner, immediately correlate it with `reviews/${REVIEWER_ID}.md` on git and the builder's `Reviewer Signal Scorecard`, and confidently execute `Retain List` (`CONTINUE`) or `Drop List` (`STOP`).
 
 ### Autonomous Triage & Reviewer Signal Scorecard
+- **Non-Blocking Asynchronous Invariant**: External review prompt emission and reviewer audits are asynchronous and non-blocking; the lifecycle pauses only at formal human approval gates (Steps 2c, 3c, 4g, 8).
 - **Precedence Hierarchy**: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
 - **Ponytail Triage Matrix**: Evaluate findings against Ponytail Senior Dev ladder (`ACCEPT` real defects vs `REJECT` speculative abstractions).
 - **Reviewer Signal Scorecard**:
