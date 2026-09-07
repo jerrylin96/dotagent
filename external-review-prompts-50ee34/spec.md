@@ -149,6 +149,8 @@ When external reviews are ingested:
    - **Retain List (`CONTINUE`)**: Explicit list of reviewer sessions the user should continue prompting at the next milestone gate.
    - **Drop List (`STOP`)**: Explicit list of reviewer sessions the user should stop prompting or close, preventing wasted copy-paste overhead on unproductive agents.
    - **Tamper Tripwire Termination**: Instant termination alert for agents attempting to modify `reviewer_scorecard.md`.
+4. **External Review Convergence Gate (Retain List Only)**:
+   When external reviewers are active, Step 7b ephemeral cleanup and signoff pause until all reviewers on the `Retain List (`CONTINUE`)` confirm resolution with `VERDICT: APPROVE` (or `[x] Resolved`), or the human engineer explicitly overrides. Agents on the `Drop List (`STOP`)` are ignored; if no reviewers remain on the `Retain List`, the gate passes immediately.
 
 ### 3.5 Automated Ephemeral Cleanup (Server-Enumerated Truth)
 1. **Step 7b & Step 8 Purge Snippet**:

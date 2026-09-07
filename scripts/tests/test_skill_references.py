@@ -764,6 +764,14 @@ def test_external_review_prompts_and_living_branches_contract():
         assert "Verify-Before-Terminate" in spec_c, "Missing Verify-Before-Terminate in spec.md"
         assert "reviewer_scorecard.md" in plan_c, "Missing reviewer_scorecard.md in plan.md"
 
+    # 15. External Review Convergence Gate (Retain List Only)
+    assert "External Review Convergence Gate" in mf_c, "Missing Convergence Gate in make-feature SKILL.md"
+    assert "Retain List Only" in mf_c, "Missing Retain List Only in make-feature SKILL.md"
+    assert "External Review Convergence Gate" in adv_c, "Missing Convergence Gate in adversarial-review SKILL.md"
+    assert "External Review Convergence Gate" in agents_c, "Missing Convergence Gate in AGENTS.md"
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        assert "External Review Convergence Gate" in spec_c, "Missing Convergence Gate in spec.md"
+
 
 
 
