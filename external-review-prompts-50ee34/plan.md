@@ -23,13 +23,13 @@
     - Non-merging PR enforcement: `PR source MUST be \`gemini/${FEATURE_SLUG}\``
     - Untrusted input defense: prohibition against executing unverified scripts/commands suggested by reviews.
     - Fallback ingestion path: `scratch/external_reviews/`
-    - Scoped emission anchors across all milestone steps: Step 2, Step 3, Step 4d, Step 5/6 (`Phase 2 Step 5 / Phase 3 Step 6`), and Heavy Mode.
+    - Scoped emission anchors across all milestone steps: Step 2 / 2b, Step 3 / 3b, Step 4d, Step 5 / Step 6 (`Phase 2 Step 5 / Phase 3 Step 6`), and Heavy Mode per-slice loops.
     - Ordering assertion: review branch purge appears after `APPROVE` in Step 7b.
   - Assert synchronization in `skills/adversarial-review/SKILL.md`:
     - Dispatch rule distinguishing standalone `/adversarial-review` (single pass chat) from post-push living branch mode.
-    - Canonical prompt template anchors.
+    - Canonical prompt template anchors (`Mode B: Shared Sandbox Branch Mode`, `Reviewer Signal Scorecard`).
   - Assert synchronization in `AGENTS.md`:
-    - Post-commit/push review prompt emission, living review branch protocol, and Reviewer Signal Scorecard.
+    - Post-commit/push review prompt emission, living review branch protocol (`Mode B: Shared Sandbox Branch Mode`), and `Reviewer Signal Scorecard`.
   - Assert `.gitignore` contains `scratch/`.
   - Assert `GEMINI.md` symlink integrity: `assert os.path.islink("GEMINI.md")` targeting `AGENTS.md`.
 - **Verify Command (RED)**:

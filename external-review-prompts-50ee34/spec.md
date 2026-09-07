@@ -66,8 +66,8 @@ When all parallel review agents are restricted by the platform to one single sha
      sleep $((RANDOM % 5 + 1))
    done
    ```
-   - On rebase conflict: run `git rebase --abort`, report `STUCK`, and never modify another reviewer's file.
-   - **NEVER** `git push --force` to the shared branch.
+   - On rebase conflict: run `git rebase --abort`. If caused by duplicate ID (add/add conflict), re-generate `REVIEWER_ID` and retry with a fresh file. If still unresolvable after 3 attempts, fall back to outputting markdown directly. Never modify another reviewer's file.
+   - **NEVER** `git push --force` to the shared branch. History is append-only.
 4. **Builder Inspection Command for Mode B**:
    The builder inspects reviews on the shared branch:
    `git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
