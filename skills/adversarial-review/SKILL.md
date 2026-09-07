@@ -123,6 +123,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 - **Review Delivery Modes**:
   - **Mode A: Isolated Review Branches**: Reviewers operate on independent branches `review/${FEATURE_SLUG}/${REVIEWER_ID}` with a mutable checklist in `review.md`.
     - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
+    - Inspect review files via `git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"`.
   - **Mode B: Shared Sandbox Branch Mode**: When all external reviewers are pinned to a single shared branch (e.g. Arena.ai):
     - Reviewers MUST use file-level namespace isolation: write feedback exclusively to `reviews/${REVIEWER_ID}.md` (never modify shared root `review.md`).
     - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with backoff and abort on conflicts.
@@ -130,7 +131,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `FILE ISOLATION`: Reviewers own only `reviews/${REVIEWER_ID}.md` and are forbidden from editing or deleting peer files.
     - `TARGETED STAGING`: Reviewers must run only `git add reviews/${REVIEWER_ID}.md` (never blanket `git add .` or `git add -A`).
     - `ABORT ON FOREIGN CONFLICT`: On merge/rebase conflict outside `reviews/${REVIEWER_ID}.md`, run `git rebase --abort`.
-    - `Builder Ingestion Authorship Audit`: Builder verifies commits touch only `reviews/${REVIEWER_ID}.md`; any commit touching codebase or peer files is flagged `TAMPERED/CLOBBERED` and rejected.
+    - `Builder Ingestion Authorship Audit`: Builder verifies commits on shared branch (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`) touch only `reviews/${REVIEWER_ID}.md`; any commit touching codebase or peer files is flagged `TAMPERED/CLOBBERED` and rejected.
     - Inspect review files via `git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
 - **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
 - **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.

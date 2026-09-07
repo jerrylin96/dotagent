@@ -251,7 +251,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
 5. **Phase 4 (Human Signoff, PR Creation & Manual Merge)**:
    - **Goal**: Human engineer reviews post-review audit report artifact, creates Pull Request, and manually merges feature branch to target integration branch (`<base_branch>`).
    - **Step 8 (Human Review, PR Creation & Integration Gate)**: **PAUSE**. Update `<appDataDir>/brain/<conversation-id>/scratch/scratchpad.md` pre-signoff with final completion status. Present review report, diff summary, spec/plan commit SHAs, and remote feature branch link to user.
-     - **Non-Merging Verification**: If `REMOTE_ENABLED=true`, verify `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"` is completely empty. PR source MUST be `gemini/${FEATURE_SLUG}`.
+     - **Non-Merging Verification**: If `REMOTE_ENABLED=true`, verify `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"` is completely empty (if non-empty, re-run the purge and surface residual branches to user before signoff). PR source MUST be `gemini/${FEATURE_SLUG}`.
    - **Human Ownership of PR Creation & Integration**:
      > [!CAUTION]
      > - **Human PR & Merge Ownership**: Creating Pull Requests (PRs), reviewing PR diffs, and merging code *into* the target integration branch (`<base_branch>`, e.g., `main`, `develop`, `staging`, `release/*`, etc.) is **ALWAYS performed manually by the human engineer**. The AI agent is strictly forbidden from creating PRs or merging directly into the primary integration branch.
@@ -272,6 +272,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
   - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` and MUST NOT contain `..` or end with `.lock`.
   - Double-quote all shell expansions: `"${REVIEWER_ID}"`.
   - Collision check: If `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/${REVIEWER_ID}"` exists, append `-2`.
+  - Inspect review files via: `git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"`.
 - **Mode B: Shared Sandbox Branch Mode**: When all reviewers are pinned by platform to a single shared branch (e.g. Arena.ai):
   - File-level namespace isolation: Reviewers MUST write to `reviews/${REVIEWER_ID}.md` (never shared root `review.md`).
   - Rebase-push retry loop: `git pull --rebase origin <shared-branch>` (bounded retry with backoff, abort on conflict).
@@ -282,7 +283,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
     2. `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
     3. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. If retries are exhausted, fall back to chat markdown or `scratch/external_reviews/<REVIEWER_ID>.md`.
   - **Builder Ingestion Authorship Audit**:
-    - When ingesting shared review branches, the builder verifies commit history (`git log --name-only`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
+    - When ingesting shared review branches, the builder verifies commit history scoped to branch commits (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
     - If any commit touches, truncates, or deletes peer files or codebase files, the builder flags it as `TAMPERED/CLOBBERED`, rejects the commit, and notifies the user immediately.
     - Inspect review files via `git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
   - **Mode B Review File Lifecycle**: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.

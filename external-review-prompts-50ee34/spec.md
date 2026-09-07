@@ -48,6 +48,7 @@ When reviewers have branch-creation permissions on origin:
 2. **Collision Rule**: If `git ls-remote origin "refs/heads/review/${FEATURE_SLUG}/${REVIEWER_ID}"` is non-empty, reviewer appends `-2` suffix (`${REVIEWER_ID}-2`).
 3. **Review Document**: `review.md` at repository root of that branch.
 4. **Sync & Push**: Reviewer branches off feature HEAD, commits `review.md`, and pushes to their own branch. Merge-only sync on subsequent iterations (`git merge origin/${BRANCH_NAME} --no-edit`).
+5. **Builder Inspection**: `git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"`.
 
 #### Mode B: Shared Sandbox Branch Mode (e.g. Arena.ai, Blinded Eval Containers, Shared Staging)
 When all parallel review agents are restricted by the platform to one single shared branch (e.g., `arena/<session>-<repo>`):
@@ -112,7 +113,7 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
    - `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
    - `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry.
 3. **Builder Ingestion Authorship Audit**:
-   - When pulling shared review branches, the builder verifies commit history (`git log --name-only`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
+   - When pulling shared review branches, the builder verifies commit history scoped to branch commits (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
    - Any commit touching codebase files, spec/plan, or peer files is flagged as `TAMPERED/CLOBBERED` and rejected.
    - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
 

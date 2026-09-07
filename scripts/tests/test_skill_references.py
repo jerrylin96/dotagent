@@ -653,6 +653,10 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git branch -D "$lb"' in mf_c, "Missing local review branch cleanup loop in make-feature SKILL.md"
     assert "could not verify remote cleanup" in mf_c, "Missing post-delete verification warning in make-feature SKILL.md"
     assert 'git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"' in mf_c, "Missing builder inspection command in make-feature SKILL.md"
+    assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in mf_c, (
+        "Missing Mode A builder inspection command in make-feature SKILL.md"
+    )
+    assert "origin/${BRANCH_NAME}..FETCH_HEAD" in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
 
     # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
     assert "Emit External Review Prompt (Spec Gate)" in mf_c, "Missing Spec Gate emission anchor"
@@ -664,10 +668,12 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "git diff ${BASE_BRANCH}...HEAD" in mf_c, "Missing local-safe offline git diff command in make-feature SKILL.md"
 
     # 7. Cleanup ordering assertion (purge appears after APPROVE in Step 7b)
-    approve_idx = mf_c.find("Adversarial Code Reviewer")
-    cleanup_idx = mf_c.find(cleanup_cmd)
-    assert approve_idx != -1 and cleanup_idx != -1 and approve_idx < cleanup_idx, (
-        "Cleanup command must appear after Adversarial Code Reviewer approval in make-feature SKILL.md"
+    step7_idx = mf_c.find("Step 7 (Subagent Adversarial Review Loop)")
+    step7b_idx = mf_c.find("Step 7b (Idempotent Ephemeral Cleanup)")
+    cleanup_idx = mf_c.find(cleanup_cmd, step7b_idx) if step7b_idx != -1 else -1
+    assert step7_idx != -1 and step7b_idx != -1 and cleanup_idx != -1, "Missing Step 7, 7b, or cleanup command"
+    assert step7_idx < step7b_idx < cleanup_idx, (
+        "Cleanup command must appear in Step 7b after Step 7 review loop in make-feature SKILL.md"
     )
 
     # 8. Synchronization in adversarial-review/SKILL.md
@@ -677,6 +683,10 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "Canonical External Review Prompt Template" in adv_c, "Missing Canonical External Review Prompt Template in adversarial-review SKILL.md"
     assert "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" in adv_c, "Missing grammar regex in adversarial-review SKILL.md"
     assert 'git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"' in adv_c, "Missing inspection command in adversarial-review SKILL.md"
+    assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in adv_c, (
+        "Missing Mode A inspection command in adversarial-review SKILL.md"
+    )
+    assert "origin/${BRANCH_NAME}..FETCH_HEAD" in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
 
     # 9. Synchronization in AGENTS.md
     assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
