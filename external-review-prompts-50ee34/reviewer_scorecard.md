@@ -6,13 +6,13 @@
 
 ---
 
-## Active Scorecard (Round 3 Triage)
+## Active Scorecard (Round 4 Triage)
 
 | Reviewer ID | Speed / State | Signal Level | Key Contributions / Findings | Directive |
 |---|---|---|---|---|
-| `reviewer-3285` | Fast / Ready | **HIGH SIGNAL** | Caught offline git diff bug, early-abort review branch leak, canonical template defect | **CONTINUE** |
-| `reviewer-18251` | Thorough / Done | **HIGH SIGNAL** | Caught unscoped authorship log, missing Mode A inspection command, test ordering vacuousness | **CONTINUE** |
-| `reviewer-24562` | Active | **HIGH SIGNAL** | Caught banner pre-push SHA gap, refname regex `.lock` / `..` escaping, non-blocking invariant | **CONTINUE** |
+| `reviewer-3285` | Fast / Ready | **HIGH SIGNAL** | Caught `cat` dispatch pointer failure on pinned branch, plain checkout, 2-dot diff | **CONTINUE** |
+| `reviewer-18251` | Thorough / Done | **HIGH SIGNAL** | Caught cleanup test ordering vacuousness, unhoisted prompt write, slice cadence | **CONTINUE** |
+| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Dogfooded `FETCH_HEAD` dispatch pointer, write-before-stage order, paired fetch+show | **CONTINUE** |
 | 4th Agent | Terminated | **UNRESPONSIVE / STUCK** | Session hung / aborted earlier by user | **STOP** (Closed) |
 
 ---

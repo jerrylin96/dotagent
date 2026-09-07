@@ -670,9 +670,12 @@ def test_external_review_prompts_and_living_branches_contract():
     # 7. Cleanup ordering assertion (purge appears after APPROVE in Step 7b)
     step7_idx = mf_c.find("Step 7 (Subagent Adversarial Review Loop)")
     step7b_idx = mf_c.find("Step 7b (Idempotent Ephemeral Cleanup)")
-    cleanup_idx = mf_c.find(cleanup_cmd, step7b_idx) if step7b_idx != -1 else -1
-    assert step7_idx != -1 and step7b_idx != -1 and cleanup_idx != -1, "Missing Step 7, 7b, or cleanup command"
-    assert step7_idx < step7b_idx < cleanup_idx, (
+    step7c_idx = mf_c.find("Step 7c (Ephemeral Post-Review Audit Report Artifact")
+    assert step7_idx != -1 and step7b_idx != -1 and step7c_idx != -1, "Missing Step 7, 7b, or 7c anchors"
+    seg = mf_c[step7b_idx:step7c_idx]
+    assert cleanup_cmd in seg, "Cleanup command must appear within Step 7b"
+    assert 'push origin --delete "$b"' in seg, "Delete loop must appear within Step 7b"
+    assert step7_idx < step7b_idx < step7c_idx, (
         "Cleanup command must appear in Step 7b after Step 7 review loop in make-feature SKILL.md"
     )
 
@@ -722,13 +725,19 @@ def test_external_review_prompts_and_living_branches_contract():
 
     # 13. In-Tree Ephemeral Review Prompt Protocol (review_prompt.md)
     assert "review_prompt.md" in mf_c, "Missing review_prompt.md in make-feature SKILL.md"
-    assert "git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md" in mf_c, (
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"' in mf_c, (
         "Missing dispatch command in make-feature SKILL.md"
     )
     assert "review_prompt.md" in adv_c, "Missing review_prompt.md in adversarial-review SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"' in adv_c, (
+        "Missing dispatch command in adversarial-review SKILL.md"
+    )
     assert "review_prompt.md" in agents_c, "Missing review_prompt.md in AGENTS.md"
     if os.path.exists(spec_md) and os.path.exists(plan_md):
         assert "review_prompt.md" in spec_c, "Missing review_prompt.md in spec.md"
+        assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"' in spec_c, (
+            "Missing dispatch command in spec.md"
+        )
         assert "review_prompt.md" in plan_c, "Missing review_prompt.md in plan.md"
 
     # 14. In-Tree Ephemeral Scorecard Protocol & Tamper Tripwire (reviewer_scorecard.md)

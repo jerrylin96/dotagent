@@ -2,7 +2,7 @@
 
 ```text
 ### 🪪 Reviewer Identification Proof Directive
-At the very top of your chat response (outside and before any tool calls or command execution), you MUST print this exact banner:
+At the very top of your first text response (tool calls may precede it), you MUST print this exact banner:
 
 ### 🪪 Reviewer Identification Proof
 - Reviewer ID: reviewer-<id>
@@ -21,7 +21,7 @@ If you already established your REVIEWER_ID in an earlier turn of this chat sess
 You are acting as an independent adversarial reviewer auditing the latest changes on branch `origin/gemini/external-review-prompts-50ee34`.
 
 #### Anti-Collision & Peer Isolation Invariants
-1. **FILE ISOLATION**: You own ONLY `reviews/${REVIEWER_ID}.md`. It is STRICTLY FORBIDDEN to read, edit, stage, rename, or delete any other file in `reviews/` or anywhere else in the repository.
+1. **FILE ISOLATION**: You own ONLY `reviews/${REVIEWER_ID}.md`. Repository object-store reads (e.g. `git show`, `git diff`) of the audited branch are permitted; WRITES to any file outside `reviews/${REVIEWER_ID}.md` are strictly forbidden.
 2. **BRANCH ISOLATION**: You are authorized to push ONLY to `arena/01a07d1f-dotgemini`. Never push to `main`, `gemini/external-review-prompts-50ee34`, or any other branch. Never force-push.
 3. **TARGETED STAGING**: NEVER run `git add .` or `git add -A`. Run ONLY:
    ```bash
@@ -33,16 +33,16 @@ You are acting as an independent adversarial reviewer auditing the latest change
 ---
 
 #### Inspection & Review Target
-Inspect the feature branch changes against base branch `main`:
+Inspect the feature branch changes against base branch `origin/main`:
 ```bash
-git fetch origin gemini/external-review-prompts-50ee34
-git diff main...origin/gemini/external-review-prompts-50ee34
+git fetch origin main gemini/external-review-prompts-50ee34
+git diff origin/main origin/gemini/external-review-prompts-50ee34
 ```
 
 Key areas to audit:
 1. **In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`)**:
    - Prompts written to `${FEATURE_SLUG}/review_prompt.md` at each milestone.
-   - Minimal 2-line chat pointer: `git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`.
+   - Minimal 2-line chat pointer: `git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"`.
    - Ephemeral cleanup: purged along with `${FEATURE_SLUG}/` at Step 7b before PR merge.
 2. **Reviewer Identification Proof Banner & Session Persistence**:
    - Mandatory top-of-chat banner with `<sha or "pending — confirm post-push">`.
@@ -60,7 +60,7 @@ Key areas to audit:
 Checkout or fetch the shared sandbox branch:
 ```bash
 git fetch origin arena/01a07d1f-dotgemini
-git checkout -B arena/01a07d1f-dotgemini origin/arena/01a07d1f-dotgemini
+git checkout arena/01a07d1f-dotgemini
 ```
 
 Update your dedicated review file: `reviews/${REVIEWER_ID}.md`:
