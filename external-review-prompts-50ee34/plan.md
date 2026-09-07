@@ -15,6 +15,7 @@
   - Assert exact literal anchors in `skills/make-feature/SKILL.md`:
     - Branch naming & format: `review/${FEATURE_SLUG}/${REVIEWER_ID}` and `AUDITED_SHA:`
     - Identifier grammar: `^[A-Za-z0-9._-]+$`
+    - Delivery modes: `Mode A: Isolated Review Branches`, `Mode B: Shared Sandbox Branch Mode`, `reviews/${REVIEWER_ID}.md`
     - Precedence Hierarchy: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
     - Autonomous Ponytail Triage & Scorecard: `Reviewer Signal Scorecard`, `HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`, `Retain List`, `Drop List`
     - Whitespace-safe cleanup command: `git for-each-ref --format='%(refname:strip=3)' "refs/remotes/origin/review/${FEATURE_SLUG}/*"`
@@ -37,6 +38,7 @@
   - Update `make-feature/SKILL.md`:
     - Add post-push review prompt emission to Step 2, Step 3, Step 4d, Step 6, and Heavy Mode per-slice loops.
     - Add dedicated section "Ephemeral Living Review Branches & Reviewer Signal Triage Protocol":
+      - Mode A (isolated review branches) vs Mode B (shared sandbox branch with file-level isolation `reviews/${REVIEWER_ID}.md` and rebase-push protocol).
       - `review/${FEATURE_SLUG}/${REVIEWER_ID}` branch naming with `^[A-Za-z0-9._-]+$` grammar.
       - `AUDITED_SHA` freshness handshake.
       - Living `review.md` checklist with append-only resolution rules (`[ ] Open`, `[x] Resolved`).

@@ -34,29 +34,48 @@ After every successful push to `origin/${BRANCH_NAME}` (or commit if `REMOTE_ENA
 4. Phase 2 Step 5 / Phase 3 Step 6: GREEN code push (`feat: implement feature...`).
 5. Heavy Mode: After each slice RED test push and each slice GREEN code push.
 
-### 3.2 Ephemeral Review Branch Architecture
-For each external review agent:
+### 3.2 Review Delivery Modes: Isolated vs. Shared Branch
+
+#### Mode A: Isolated Review Branches (Default Git Remote)
+When reviewers have full branch-creation permissions on origin:
 1. **Branch Name**: `review/${FEATURE_SLUG}/${REVIEWER_ID}`
    - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9._-]+$`. Builder rejects any ID violating this grammar before executing `git show`.
-2. **Review Document**: `review.md` at the repository root of that branch.
-3. **Document Format**:
-   ```markdown
-   # Review: <REVIEWER_ID>
-   VERDICT: [APPROVE | NEEDS_REVISION | REJECT]
-   AUDITED_SHA: <sha>
+2. **Review Document**: `review.md` at repository root of that branch.
+3. **Sync & Push**: Reviewer branches off feature HEAD, commits `review.md`, and pushes to their own branch. Merge-only sync on subsequent iterations (`git merge origin/${BRANCH_NAME} --no-edit`).
 
-   ## Audit Findings
-   - [ ] **[Severity: P0|P1|P2|Nit] [Section: Spec §X or Plan Task Y] Title**
-     - **Defect / Gap**: Concrete explanation of the flaw, failure mode, or counterexample.
-     - **Actionable Fix**: Minimal, concrete remediation complying with Ponytail.
-   - [x] **[Severity: P1] [Section: Spec §Z] Title**
-     - *(Resolved in commit <sha>)*
+#### Mode B: Shared Sandbox Branch Mode (e.g. Arena.ai, Blinded Eval Containers, Shared Staging)
+When all parallel review agents are restricted by the platform to one single shared branch (e.g., `arena/<session>-<repo>`):
+1. **File-Level Namespace Isolation (Anti-Clobbering)**:
+   Reviewers MUST NEVER write to a shared root `review.md`. Every reviewer MUST write to their own dedicated file under `reviews/`:
+   `reviews/${REVIEWER_ID}.md`
+2. **Rebase-Push Protocol (Anti-Lockout)**:
+   To prevent `[rejected - non-fast-forward]` push locks when parallel agents push simultaneously, reviewers MUST commit to their unique file and rebase before pushing:
+   ```bash
+   git add reviews/${REVIEWER_ID}.md
+   git commit -m "review: add audit from ${REVIEWER_ID}"
+   git pull --rebase origin <shared-branch>
+   git push origin HEAD:<shared-branch>
    ```
-4. **Living Iteration Loop & Sync**:
-   - Reviewer syncs feature updates via merge-only: `git fetch origin && git merge origin/${BRANCH_NAME} --no-edit` (never rebase/force-push).
-   - On `review.md` merge conflicts, keep the reviewer's side: `git checkout --ours -- review.md`.
-   - Builder fetches branch: `git fetch origin "refs/heads/review/${FEATURE_SLUG}/*:refs/remotes/origin/review/${FEATURE_SLUG}/*"`.
-   - Builder validates `AUDITED_SHA` against `git rev-parse origin/${BRANCH_NAME}` to verify freshness before triaging.
+3. **Builder Multi-Reviewer Discovery**:
+   The builder inspects all files in `reviews/*.md` on the shared branch, preserving all parallel audits without overwrite risk.
+
+#### Review Document Schema (Common to Both Modes)
+```markdown
+# Review: <REVIEWER_ID>
+VERDICT: [APPROVE | NEEDS_REVISION | REJECT]
+AUDITED_SHA: <sha>
+
+## Audit Findings
+- [ ] **[Severity: P0|P1|P2|Nit] [Section: Spec §X or Plan Task Y] Title**
+  - **Defect / Gap**: Concrete explanation of the flaw, failure mode, or counterexample.
+  - **Actionable Fix**: Minimal, concrete remediation complying with Ponytail.
+- [x] **[Severity: P1] [Section: Spec §Z] Title**
+  - *(Resolved in commit <sha>)*
+```
+
+#### Living Iteration Loop & Freshness Handshake
+- Builder fetches review refs (Mode A: `refs/heads/review/${FEATURE_SLUG}/*`; Mode B: shared branch `reviews/*.md`).
+- Builder validates `AUDITED_SHA` against `git rev-parse origin/${BRANCH_NAME}` to verify freshness before triaging. Stale reviews trigger a re-audit request rather than chasing phantom defects.
 
 ### 3.3 Prompt Template Structure & Anti-Bloat Instantiation
 To avoid conversational bloat, the canonical prompt template is defined in `adversarial-review/SKILL.md`. After each push, the builder emits a compact instantiation:
