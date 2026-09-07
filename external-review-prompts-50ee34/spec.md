@@ -10,24 +10,29 @@ Currently:
 4. **Manual Overhead**: Users must manually formulate prompts containing branch names, diff ranges, review lenses, and output formatting rules after every push.
 
 ## 2. Goals & Non-Negotiables
-- **Post-Push Prompt Generation**: Automatically emit a tailored, copy-pasteable review prompt immediately after every milestone push (`spec`, `plan`, `test: add RED test suite`, `feat: implement GREEN code`, and per-slice pushes in Heavy Mode).
-- **Ephemeral Review Branches as Living Scratchpads**:
-  - Review agents operate on isolated, disposable branches: `review/${FEATURE_SLUG}/${REVIEWER_ID}`.
-  - Reviewers commit an unconstrained, living review document: `review.md` at root of their branch.
-  - **REVIEWER_ID Grammar**: `REVIEWER_ID` MUST match `^[A-Za-z0-9._-]+$` (strictly alphanumeric, dot, underscore, hyphen; no `/`, no spaces, no leading `-` to prevent shell and git option injection).
-  - **Audited-SHA Handshake**: `review.md` MUST specify `AUDITED_SHA: <sha>` in its header to prevent stale reviews from being triaged as fresh.
-  - **Non-Merging Invariant**: Review branches are strictly disposable scratchpads. They are never merged into `<base_branch>` or the feature branch. PR source MUST be `gemini/${FEATURE_SLUG}`.
-  - **Living Resolution Tracking**: Reviewers update `review.md` across iterations, marking resolved items `[x] (Resolved in commit <sha>)` while keeping active issues `[ ] Open`. Findings are append-only; items are never silently deleted.
-- **Reviewer Signal Scorecard & Autonomous Triage**:
+- **Post-Commit / Post-Push Prompt Generation**: Automatically emit a tailored, copy-pasteable review prompt immediately after every milestone commit & push (`spec`, `plan`, `test: add RED test suite`, `feat: implement GREEN code`, and per-slice pushes in Heavy Mode). If push fails or origin is absent, cleanly switch to local diff mode.
+- **Dual Delivery Modes (Mode A & Mode B)**:
+  - **Mode A (Isolated Branches)**: When reviewers have branch-creation permissions, each operates on `review/${FEATURE_SLUG}/${REVIEWER_ID}` writing `review.md`.
+  - **Mode B (Shared Sandbox Branch Mode, e.g. Arena.ai)**: When restricted to a shared branch (e.g. `arena/<session>-<repo>`), every reviewer MUST write to a dedicated file `reviews/${REVIEWER_ID}.md` (never shared root `review.md`) and push using a bounded rebase-retry loop.
+- **REVIEWER_ID Grammar & Quoting**:
+  - `REVIEWER_ID` MUST match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` (strictly alphanumeric start, max 64 chars, no `/`, no spaces, no leading `-` to prevent shell injection or git option injection).
+  - All interpolations in shell/git commands MUST be double-quoted: `"${REVIEWER_ID}"`.
+- **Audited-SHA Handshake**: `review.md` (or `reviews/${REVIEWER_ID}.md`) MUST specify `AUDITED_SHA: <sha>` in its header to prevent stale reviews from being triaged as fresh.
+- **Non-Merging Invariant & Force-Push Prohibition**:
+  - Review branches are strictly disposable scratchpads. They are never merged into `<base_branch>` or the feature branch. PR source MUST be `gemini/${FEATURE_SLUG}`.
+  - Reviewers are strictly forbidden from running `git push --force` to shared branches. History is append-only.
+- **Living Resolution Tracking**: Reviewers update findings across iterations, marking resolved items `[x] (Resolved in commit <sha>)` while keeping active issues `[ ] Open`. Findings are append-only; items are never silently deleted.
+- **Reviewer Signal Scorecard & Explicit Directives**:
   - The builder agent autonomously evaluates external findings against the Ponytail Senior Dev ladder (`ACCEPT` vs `REJECT` with 1-line rationale).
-  - The agent outputs an explicit **Reviewer Signal Scorecard** rating each reviewer (`HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`), making it immediately obvious to both user and agent who to continue listening to and who to drop.
+  - The agent outputs an explicit **Reviewer Signal Scorecard** rating each reviewer (`HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`).
+  - The scorecard concludes with explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)**.
 - **Automated Ephemeral Cleanup**:
   - In Phase 3 Step 7b (and Step 8 pre-signoff re-check, and Step 2c/3c early abort), all remote `review/${FEATURE_SLUG}/*` branches and local review branches are completely pruned.
 
 ## 3. Detailed Workflow & Protocols
 
-### 3.1 Push-Cadence Triggers
-After every successful push to `origin/${BRANCH_NAME}` (or commit if `REMOTE_ENABLED=false`):
+### 3.1 Milestone Emission Triggers
+Emit the external review prompt immediately following each milestone *commit*, switching target between remote branch (if pushed successfully) and local diff inspection (if push failed or repository is offline):
 1. Phase 1a Step 2 / 2b: Spec push (`spec: add initial feature spec...`).
 2. Phase 1b Step 3 / 3b: Plan push (`plan: add implementation plan...`).
 3. Phase 2 Step 4d: RED test push (`test: add RED test suite (failing)`).
@@ -37,27 +42,35 @@ After every successful push to `origin/${BRANCH_NAME}` (or commit if `REMOTE_ENA
 ### 3.2 Review Delivery Modes: Isolated vs. Shared Branch
 
 #### Mode A: Isolated Review Branches (Default Git Remote)
-When reviewers have full branch-creation permissions on origin:
+When reviewers have branch-creation permissions on origin:
 1. **Branch Name**: `review/${FEATURE_SLUG}/${REVIEWER_ID}`
-   - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9._-]+$`. Builder rejects any ID violating this grammar before executing `git show`.
-2. **Review Document**: `review.md` at repository root of that branch.
-3. **Sync & Push**: Reviewer branches off feature HEAD, commits `review.md`, and pushes to their own branch. Merge-only sync on subsequent iterations (`git merge origin/${BRANCH_NAME} --no-edit`).
+   - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Builder rejects any ID violating this grammar before executing `git show`.
+2. **Collision Rule**: If `git ls-remote origin "refs/heads/review/${FEATURE_SLUG}/${REVIEWER_ID}"` is non-empty, reviewer appends `-2` suffix (`${REVIEWER_ID}-2`).
+3. **Review Document**: `review.md` at repository root of that branch.
+4. **Sync & Push**: Reviewer branches off feature HEAD, commits `review.md`, and pushes to their own branch. Merge-only sync on subsequent iterations (`git merge origin/${BRANCH_NAME} --no-edit`).
 
 #### Mode B: Shared Sandbox Branch Mode (e.g. Arena.ai, Blinded Eval Containers, Shared Staging)
 When all parallel review agents are restricted by the platform to one single shared branch (e.g., `arena/<session>-<repo>`):
 1. **File-Level Namespace Isolation (Anti-Clobbering)**:
    Reviewers MUST NEVER write to a shared root `review.md`. Every reviewer MUST write to their own dedicated file under `reviews/`:
    `reviews/${REVIEWER_ID}.md`
-2. **Rebase-Push Protocol (Anti-Lockout)**:
-   To prevent `[rejected - non-fast-forward]` push locks when parallel agents push simultaneously, reviewers MUST commit to their unique file and rebase before pushing:
+2. **Collision Rule**: If `reviews/${REVIEWER_ID}.md` already exists, reviewer appends `-2` suffix.
+3. **Rebase-Push Protocol with Bounded Retry (Anti-Lockout)**:
+   To prevent `[rejected - non-fast-forward]` push locks when parallel agents push simultaneously, reviewers MUST use a bounded retry loop with backoff and abort on conflict:
    ```bash
-   git add reviews/${REVIEWER_ID}.md
+   git add "reviews/${REVIEWER_ID}.md"
    git commit -m "review: add audit from ${REVIEWER_ID}"
-   git pull --rebase origin <shared-branch>
-   git push origin HEAD:<shared-branch>
+   for i in 1 2 3 4 5; do
+     git pull --rebase origin <shared-branch> || { git rebase --abort; break; }
+     git push origin HEAD:<shared-branch> && break
+     sleep $((RANDOM % 5 + 1))
+   done
    ```
-3. **Builder Multi-Reviewer Discovery**:
-   The builder inspects all files in `reviews/*.md` on the shared branch, preserving all parallel audits without overwrite risk.
+   - On rebase conflict: run `git rebase --abort`, report `STUCK`, and never modify another reviewer's file.
+   - **NEVER** `git push --force` to the shared branch.
+4. **Builder Inspection Command for Mode B**:
+   The builder inspects reviews on the shared branch:
+   `git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
 
 #### Review Document Schema (Common to Both Modes)
 ```markdown
@@ -73,17 +86,15 @@ AUDITED_SHA: <sha>
   - *(Resolved in commit <sha>)*
 ```
 
-#### Living Iteration Loop & Freshness Handshake
-- Builder fetches review refs (Mode A: `refs/heads/review/${FEATURE_SLUG}/*`; Mode B: shared branch `reviews/*.md`).
-- Builder validates `AUDITED_SHA` against `git rev-parse origin/${BRANCH_NAME}` to verify freshness before triaging. Stale reviews trigger a re-audit request rather than chasing phantom defects.
-
 ### 3.3 Prompt Template Structure & Anti-Bloat Instantiation
-To avoid conversational bloat, the canonical prompt template is defined in `adversarial-review/SKILL.md`. After each push, the builder emits a compact instantiation:
-1. Target feature branch: `origin/${BRANCH_NAME}`
-2. Latest Commit SHA: `<sha>`
-3. Milestone target: in-tree spec, plan, test files, or diff.
-4. Git branch instructions (or offline fallback instructions when `REMOTE_ENABLED=false`).
-5. Fallback ingestion: User-saved file at `scratch/external_reviews/<REVIEWER_ID>.md` (ensuring `scratch/` is in `.gitignore`).
+To avoid conversational bloat, the canonical prompt templates and dispatch rules live in `adversarial-review/SKILL.md`:
+- **Dispatch Rule**: User-triggered standalone `/adversarial-review` maintains the single-pass chat report contract (`External PR Action Plan`). Post-push external review uses the living-branch / file protocol.
+- After each push, the builder emits a compact instantiation:
+  1. Target feature branch: `origin/${BRANCH_NAME}`
+  2. Latest Commit SHA: `<sha>`
+  3. Milestone target: in-tree spec, plan, test files, or diff.
+  4. Mode A vs Mode B branching instructions.
+  5. Fallback ingestion: User-saved file at `scratch/external_reviews/<REVIEWER_ID>.md` (ensuring `scratch/` is in `.gitignore`).
 
 ### 3.4 Autonomous Triage & Reviewer Signal Scorecard
 When external reviews are ingested:
@@ -102,7 +113,7 @@ When external reviews are ingested:
    - **Retain List (`CONTINUE`)**: Explicit list of reviewer sessions the user should continue prompting at the next milestone gate.
    - **Drop List (`STOP`)**: Explicit list of reviewer sessions the user should stop prompting or close, preventing wasted copy-paste overhead on unproductive agents.
 
-### 3.5 Automated Ephemeral Cleanup & Zero-Trace Purge
+### 3.5 Automated Ephemeral Cleanup
 1. **Step 7b & Step 8 Purge Snippet**:
    ```bash
    if [ "$REMOTE_ENABLED" = true ]; then
@@ -112,18 +123,22 @@ When external reviews are ingested:
      while IFS= read -r b; do
        [ -n "$b" ] && git push origin --delete "$b" 2>/dev/null || true
      done
-     n=$(git ls-remote origin "refs/heads/review/${FEATURE_SLUG}/*" 2>/dev/null | wc -l)
-     [ "$n" -eq 0 ] || echo "warning: ${n} review branch(es) remain" >&2
+     if ! out=$(git ls-remote origin "refs/heads/review/${FEATURE_SLUG}/*" 2>&1); then
+       echo "warning: could not verify remote cleanup: $out" >&2
+     elif [ -n "$out" ]; then
+       echo "warning: review branches remain" >&2
+     fi
    fi
    # Local review branch cleanup (skipping current checkout)
    curr_b=$(git branch --show-current 2>/dev/null || true)
    git for-each-ref --format='%(refname:short)' "refs/heads/review/${FEATURE_SLUG}/*" |
    while IFS= read -r lb; do
      if [ -n "$lb" ] && [ "$lb" != "$curr_b" ]; then
-       git branch -D "$lb" 2>/dev/null || true
+       git branch -D "$lb" || true
      fi
    done
    ```
+   No review refs or files remain reachable after merge; orphaned objects expire via remote GC.
 2. **Early Abort Cleanup**: If human aborts at Step 2c or 3c, execute the exact same review branch purge snippet.
 3. **Step 8 Non-Merging Verification**:
    - Verify `git branch -r --list "origin/review/${FEATURE_SLUG}/*"` is completely empty.

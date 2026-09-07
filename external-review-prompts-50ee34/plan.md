@@ -14,16 +14,23 @@
   - Add `test_external_review_prompts_and_living_branches_contract()` to `scripts/tests/test_skill_references.py`.
   - Assert exact literal anchors in `skills/make-feature/SKILL.md`:
     - Branch naming & format: `review/${FEATURE_SLUG}/${REVIEWER_ID}` and `AUDITED_SHA:`
-    - Identifier grammar: `^[A-Za-z0-9._-]+$`
+    - Identifier grammar: `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`
     - Delivery modes: `Mode A: Isolated Review Branches`, `Mode B: Shared Sandbox Branch Mode`, `reviews/${REVIEWER_ID}.md`
+    - Rebase-push retry loop: `git pull --rebase origin <shared-branch>` and ban on force-push.
     - Precedence Hierarchy: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
     - Autonomous Ponytail Triage & Scorecard: `Reviewer Signal Scorecard`, `HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`, `Retain List`, `Drop List`
     - Whitespace-safe cleanup command: `git for-each-ref --format='%(refname:strip=3)' "refs/remotes/origin/review/${FEATURE_SLUG}/*"`
     - Non-merging PR enforcement: `PR source MUST be \`gemini/${FEATURE_SLUG}\``
     - Untrusted input defense: prohibition against executing unverified scripts/commands suggested by reviews.
-    - Offline fallback: `REMOTE_ENABLED=false` local diff handling.
+    - Fallback ingestion path: `scratch/external_reviews/`
     - Scoped emission anchors across all 4 milestone steps (Step 2, Step 3, Step 4d, Step 6) and Heavy Mode.
-  - Assert synchronization in `skills/adversarial-review/SKILL.md` and `AGENTS.md`.
+    - Ordering assertion: review branch purge appears after `APPROVE` in Step 7b.
+  - Assert synchronization in `skills/adversarial-review/SKILL.md`:
+    - Dispatch rule distinguishing standalone `/adversarial-review` (single pass chat) from post-push living branch mode.
+    - Canonical prompt template anchors.
+  - Assert synchronization in `AGENTS.md`:
+    - Post-push review prompt emission, living review branch protocol, and Reviewer Signal Scorecard.
+  - Assert `.gitignore` contains `scratch/`.
   - Assert `GEMINI.md` symlink integrity: `assert os.path.islink("GEMINI.md")` targeting `AGENTS.md`.
 - **Verify Command (RED)**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py -k test_external_review_prompts_and_living_branches_contract`
@@ -36,21 +43,22 @@
   - `.gitignore` (add `scratch/`)
 - **GREEN Implementation Target**:
   - Update `make-feature/SKILL.md`:
-    - Add post-push review prompt emission to Step 2, Step 3, Step 4d, Step 6, and Heavy Mode per-slice loops.
+    - Add post-commit review prompt emission to Step 2, Step 3, Step 4d, Step 6, and Heavy Mode per-slice loops, branching on `REMOTE_ENABLED` / push success for remote vs local diff targets.
     - Add dedicated section "Ephemeral Living Review Branches & Reviewer Signal Triage Protocol":
-      - Mode A (isolated review branches) vs Mode B (shared sandbox branch with file-level isolation `reviews/${REVIEWER_ID}.md` and rebase-push protocol).
-      - `review/${FEATURE_SLUG}/${REVIEWER_ID}` branch naming with `^[A-Za-z0-9._-]+$` grammar.
+      - Mode A (isolated review branches) vs Mode B (shared sandbox branch with file-level isolation `reviews/${REVIEWER_ID}.md` and bounded rebase-retry loop).
+      - `REVIEWER_ID` grammar `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` with double-quoting rules.
       - `AUDITED_SHA` freshness handshake.
-      - Living `review.md` checklist with append-only resolution rules (`[ ] Open`, `[x] Resolved`).
+      - Living checklist with append-only resolution rules (`[ ] Open`, `[x] Resolved`).
       - Reviewer Signal Scorecard with explicit user action directives (`Retain List` / `Drop List`).
       - Precedence hierarchy and Ponytail triage matrix (`ACCEPT` vs `REJECT`).
-      - Whitespace-safe `for-each-ref` cleanup in Step 7b, Step 8, and early abort Step 2c/3c.
+      - Whitespace-safe `for-each-ref` cleanup in Step 7b, Step 8, and early abort Step 2c/3c with robust `ls-remote` check.
       - Non-merging PR enforcement in Step 8.
       - Untrusted input defense rule.
       - Fallback ingestion at `scratch/external_reviews/<REVIEWER_ID>.md`.
   - Update `adversarial-review/SKILL.md`:
+    - Add dispatch rule: standalone chat mode vs post-push living branch mode.
     - Document canonical external review prompt templates, grammar, and triage scorecard.
-  - Update `.gitignore` to include `scratch/` to prevent untracked reviewer pastes from being committed.
+  - Update `.gitignore` to include `scratch/`.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
 
@@ -58,7 +66,7 @@
 - **Files**:
   - `AGENTS.md`
 - **GREEN Implementation Target**:
-  - Update §3 "Mandatory Default Execution Pipeline & Milestone Gates" in `AGENTS.md` to document post-push external review prompts, living review branches, and the Reviewer Signal Scorecard.
+  - Update §3 "Mandatory Default Execution Pipeline & Milestone Gates" in `AGENTS.md` to document post-commit/push external review prompts, living review branches, and the Reviewer Signal Scorecard.
   - Confirm `GEMINI.md` symlink integrity.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
