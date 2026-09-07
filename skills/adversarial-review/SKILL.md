@@ -118,6 +118,23 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 - **Review Mode Context**: Set to `internal-pipeline` in compaction block.
 - **Builder-Reviewer Loop**: Parent builder agent handles code edits; reviewer subagent audits and emits `APPROVE` or `REJECT` up to max 3 cycles.
 
+#### 3. Post-Commit/Push External Review & Living Review Branch Mode (Lifecycle Multi-Agent Reviews)
+- **Dispatch Distinction**: Standalone `/adversarial-review` executes a single-pass read-only audit producing the chat contract `External PR Action Plan`. In contrast, post-commit/push external review prompts generated during `/make-feature` (at Spec, Plan, RED Test, GREEN Code, and per-slice gates) solicit asynchronous feedback from external anonymous agents (e.g. Arena.ai) on ephemeral living review branches.
+- **Review Delivery Modes**:
+  - **Mode A: Isolated Review Branches**: Reviewers operate on independent branches `review/${FEATURE_SLUG}/${REVIEWER_ID}` with a mutable checklist in `review.md`.
+  - **Mode B: Shared Sandbox Branch Mode**: When all external reviewers are pinned to a single shared branch (e.g. Arena.ai):
+    - Reviewers MUST use file-level namespace isolation: write feedback exclusively to `reviews/${REVIEWER_ID}.md` (never modify shared root `review.md`).
+    - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with exponential backoff and abort on conflicts.
+    - Reviewers are strictly forbidden from running `push --force` on the shared branch.
+- **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
+- **Reviewer Signal Scorecard & Triage**:
+  - The builder agent triages external reviews according to the Precedence Hierarchy (`Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`) and applies the Ponytail Senior Dev ladder (`ACCEPT` real bugs vs. `REJECT` unrequested abstractions).
+  - The builder emits a **Reviewer Signal Scorecard** categorizing each external reviewer:
+    - `HIGH SIGNAL`: Concrete P0/P1 bugs caught, falsifiable claims, adhered to format.
+    - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding.
+    - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
+  - The scorecard provides explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)** so the user knows which review sessions to continue prompting and which to close.
+
 ### Subagent Context Compaction Template
 Parent agents MUST include a compacted context block (≤ 30 lines / ~400 words) when invoking review subagents:
 ```markdown
