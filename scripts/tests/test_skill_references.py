@@ -598,4 +598,84 @@ def test_signoff_phase3c_interview_contract():
     assert "profiles/domain-science.md" in harnesses_content, "Missing domain-science profile reference in HARNESSES.md"
 
 
+def test_external_review_prompts_and_living_branches_contract():
+    """Verify external review prompts, living review branches, Mode A/B, Reviewer Signal Scorecard, and server-truth cleanup contracts."""
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    agents_md = os.path.join(root_dir, "AGENTS.md")
+    gemini_md = os.path.join(root_dir, "GEMINI.md")
+    make_feature_md = os.path.join(root_dir, "skills/make-feature/SKILL.md")
+    adv_review_md = os.path.join(root_dir, "skills/adversarial-review/SKILL.md")
+    gitignore = os.path.join(root_dir, ".gitignore")
+
+    assert os.path.islink(gemini_md), "GEMINI.md must be a symbolic link"
+    assert os.readlink(gemini_md) == "AGENTS.md", "GEMINI.md must point to AGENTS.md"
+
+    with open(agents_md, "r", encoding="utf-8") as f:
+        agents_c = f.read()
+    with open(make_feature_md, "r", encoding="utf-8") as f:
+        mf_c = f.read()
+    with open(adv_review_md, "r", encoding="utf-8") as f:
+        adv_c = f.read()
+    with open(gitignore, "r", encoding="utf-8") as f:
+        gi_c = f.read()
+
+    # 1. .gitignore contains scratch/
+    assert "scratch/" in gi_c, ".gitignore must contain scratch/"
+
+    # 2. Branch naming & grammar & freshness handshake in make-feature/SKILL.md
+    assert "review/${FEATURE_SLUG}/${REVIEWER_ID}" in mf_c, "Missing review branch naming pattern in make-feature SKILL.md"
+    assert "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" in mf_c, "Missing REVIEWER_ID regex grammar in make-feature SKILL.md"
+    assert "AUDITED_SHA:" in mf_c, "Missing AUDITED_SHA handshake in make-feature SKILL.md"
+
+    # 3. Delivery modes: Mode A & Mode B
+    assert "Mode A: Isolated Review Branches" in mf_c, "Missing Mode A in make-feature SKILL.md"
+    assert "Mode B: Shared Sandbox Branch Mode" in mf_c, "Missing Mode B in make-feature SKILL.md"
+    assert "reviews/${REVIEWER_ID}.md" in mf_c, "Missing reviews/${REVIEWER_ID}.md in make-feature SKILL.md"
+    assert "git pull --rebase origin <shared-branch>" in mf_c, "Missing rebase-push retry in make-feature SKILL.md"
+    assert "push --force" in mf_c and "shared" in mf_c, "Missing ban on force-push in make-feature SKILL.md"
+
+    # 4. Precedence Hierarchy & Reviewer Signal Scorecard
+    precedence = "Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback"
+    assert precedence in mf_c, "Missing Precedence Hierarchy in make-feature SKILL.md"
+    assert "Reviewer Signal Scorecard" in mf_c, "Missing Reviewer Signal Scorecard in make-feature SKILL.md"
+    assert "HIGH SIGNAL" in mf_c, "Missing HIGH SIGNAL in make-feature SKILL.md"
+    assert "LOW SIGNAL / NOISE" in mf_c, "Missing LOW SIGNAL / NOISE in make-feature SKILL.md"
+    assert "UNRESPONSIVE / STUCK" in mf_c, "Missing UNRESPONSIVE / STUCK in make-feature SKILL.md"
+    assert "Retain List" in mf_c, "Missing Retain List directive in make-feature SKILL.md"
+    assert "Drop List" in mf_c, "Missing Drop List directive in make-feature SKILL.md"
+
+    # 5. Server-truth cleanup & Non-merging invariant
+    cleanup_cmd = 'git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"'
+    assert cleanup_cmd in mf_c, f"Missing server-truth cleanup '{cleanup_cmd}' in make-feature SKILL.md"
+    assert "PR source MUST be `gemini/${FEATURE_SLUG}`" in mf_c, "Missing PR source requirement in make-feature SKILL.md"
+    assert "never executes unverified" in mf_c, "Missing untrusted input defense in make-feature SKILL.md"
+    assert "scratch/external_reviews/" in mf_c, "Missing fallback ingestion path in make-feature SKILL.md"
+
+    # 6. Scoped emission anchors across all milestone steps
+    assert "Step 2" in mf_c and "spec:" in mf_c, "Missing Step 2 spec emission anchor"
+    assert "Step 2b" in mf_c, "Missing Step 2b spec revision emission anchor"
+    assert "Step 3" in mf_c and "plan:" in mf_c, "Missing Step 3 plan emission anchor"
+    assert "Step 3b" in mf_c, "Missing Step 3b plan revision emission anchor"
+    assert "Step 4d" in mf_c and "RED test" in mf_c, "Missing Step 4d RED test emission anchor"
+    assert "Step 5" in mf_c and "GREEN" in mf_c, "Missing Step 5 GREEN commit emission anchor"
+    assert "Step 6" in mf_c, "Missing Step 6 GREEN push emission anchor"
+    assert "Heavy Mode" in mf_c and "slice" in mf_c, "Missing Heavy Mode per-slice emission anchor"
+
+    # 7. Cleanup ordering assertion (purge appears after APPROVE in Step 7b)
+    approve_idx = mf_c.find("Adversarial Code Reviewer")
+    cleanup_idx = mf_c.find(cleanup_cmd)
+    assert approve_idx != -1 and cleanup_idx != -1 and approve_idx < cleanup_idx, (
+        "Cleanup command must appear after Adversarial Code Reviewer approval in make-feature SKILL.md"
+    )
+
+    # 8. Synchronization in adversarial-review/SKILL.md
+    assert "Mode B: Shared Sandbox Branch Mode" in adv_c, "Missing Mode B in adversarial-review SKILL.md"
+    assert "Reviewer Signal Scorecard" in adv_c, "Missing Reviewer Signal Scorecard in adversarial-review SKILL.md"
+    assert "External PR Action Plan" in adv_c, "Standalone External PR Action Plan must remain intact in adversarial-review SKILL.md"
+
+    # 9. Synchronization in AGENTS.md
+    assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
+    assert "Mode B: Shared Sandbox Branch Mode" in agents_c, "Missing Mode B in AGENTS.md"
+
+
 
