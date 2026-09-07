@@ -656,7 +656,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in mf_c, (
         "Missing Mode A builder inspection command in make-feature SKILL.md"
     )
-    assert "origin/${BRANCH_NAME}..FETCH_HEAD" in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
+    assert 'git log --name-only "${before}..origin/<shared-branch>"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
 
     # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
     assert "Emit External Review Prompt (Spec Gate)" in mf_c, "Missing Spec Gate emission anchor"
@@ -689,7 +689,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in adv_c, (
         "Missing Mode A inspection command in adversarial-review SKILL.md"
     )
-    assert "origin/${BRANCH_NAME}..FETCH_HEAD" in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
+    assert 'git log --name-only "${before}..origin/<shared-branch>"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
 
     # 9. Synchronization in AGENTS.md
     assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
@@ -744,14 +744,24 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "reviewer_scorecard.md" in mf_c, "Missing reviewer_scorecard.md in make-feature SKILL.md"
     assert "Tamper Tripwire" in mf_c, "Missing Tamper Tripwire in make-feature SKILL.md"
     assert "BRANCH ISOLATION" in mf_c, "Missing BRANCH ISOLATION in make-feature SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"' in mf_c, (
+        "Missing scorecard dispatch pointer in make-feature SKILL.md"
+    )
+    assert "chore: update reviewer scorecard" in mf_c, "Missing scorecard commit cadence in make-feature SKILL.md"
+    assert '[ -f "reviews/${REVIEWER_ID}.md" ]' in mf_c, "Missing collision check in make-feature SKILL.md"
+    assert "Verify-Before-Terminate" in mf_c, "Missing Verify-Before-Terminate in make-feature SKILL.md"
     assert "reviewer_scorecard.md" in adv_c, "Missing reviewer_scorecard.md in adversarial-review SKILL.md"
     assert "BRANCH ISOLATION" in adv_c, "Missing BRANCH ISOLATION in adversarial-review SKILL.md"
     assert "UNIVERSAL TAMPER TRIPWIRE" in adv_c, "Missing UNIVERSAL TAMPER TRIPWIRE in adversarial-review SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"' in adv_c, (
+        "Missing scorecard dispatch pointer in adversarial-review SKILL.md"
+    )
     assert "reviewer_scorecard.md" in agents_c, "Missing reviewer_scorecard.md in AGENTS.md"
     assert "Tamper Tripwire" in agents_c, "Missing Tamper Tripwire in AGENTS.md"
     if os.path.exists(spec_md) and os.path.exists(plan_md):
         assert "reviewer_scorecard.md" in spec_c, "Missing reviewer_scorecard.md in spec.md"
         assert "Tamper Tripwire" in spec_c, "Missing Tamper Tripwire in spec.md"
+        assert "Verify-Before-Terminate" in spec_c, "Missing Verify-Before-Terminate in spec.md"
         assert "reviewer_scorecard.md" in plan_c, "Missing reviewer_scorecard.md in plan.md"
 
 

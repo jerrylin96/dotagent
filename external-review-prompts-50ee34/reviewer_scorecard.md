@@ -6,13 +6,13 @@
 
 ---
 
-## Active Scorecard (Round 4 Triage)
+## Active Scorecard (Round 5 Triage)
 
 | Reviewer ID | Speed / State | Signal Level | Key Contributions / Findings | Directive |
 |---|---|---|---|---|
-| `reviewer-3285` | Fast / Ready | **HIGH SIGNAL** | Caught `cat` dispatch pointer failure on pinned branch, plain checkout, 2-dot diff | **CONTINUE** |
-| `reviewer-18251` | Thorough / Done | **HIGH SIGNAL** | Caught cleanup test ordering vacuousness, unhoisted prompt write, slice cadence | **CONTINUE** |
-| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Dogfooded `FETCH_HEAD` dispatch pointer, write-before-stage order, paired fetch+show | **CONTINUE** |
+| `reviewer-3285` | Fast / Ready | **HIGH SIGNAL** | Caught unstaged scorecard gap, authorsip audit range false positive, read contradiction | **CONTINUE** |
+| `reviewer-18251` | Thorough / Done | **HIGH SIGNAL** | Caught shallow-clone inspection diff failure, Mode A/B tripwire path parity, add/add recovery | **CONTINUE** |
+| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Caught living scorecard commit cadence, multi-branch FETCH_HEAD caution, read-carveout | **CONTINUE** |
 | 4th Agent | Terminated | **UNRESPONSIVE / STUCK** | Session hung / aborted earlier by user | **STOP** (Closed) |
 
 ---

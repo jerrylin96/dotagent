@@ -78,6 +78,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
        ```bash
        cd "${WORKTREE_PATH}"
        git add "${FEATURE_SLUG}/spec.md" "${FEATURE_SLUG}/review_prompt.md"
+       [ -f "${FEATURE_SLUG}/reviewer_scorecard.md" ] && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
        git commit -m "spec: add initial feature spec for external review"
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin "${BRANCH_NAME}"
@@ -128,6 +129,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
        ```bash
        cd "${WORKTREE_PATH}"
        git add "${FEATURE_SLUG}/plan.md" "${FEATURE_SLUG}/review_prompt.md"
+       [ -f "${FEATURE_SLUG}/reviewer_scorecard.md" ] && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
        git commit -m "plan: add implementation plan for external review"
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin "${BRANCH_NAME}"
@@ -152,6 +154,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
        ```bash
        cd "${WORKTREE_PATH}"
        git add <test_files> "${FEATURE_SLUG}/review_prompt.md"
+       [ -f "${FEATURE_SLUG}/reviewer_scorecard.md" ] && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
        git commit -m "test: add RED test suite (failing)"
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin "${BRANCH_NAME}"
@@ -175,9 +178,10 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
    - **Step 5 (Stage & Commit GREEN Implementation)**:
      - Update milestone review prompt at `${WORKTREE_PATH}/${FEATURE_SLUG}/review_prompt.md`.
      ```bash
-     cd "${WORKTREE_PATH}"
-     git add -- <modified_files> "${FEATURE_SLUG}/review_prompt.md"
-     git diff --cached --quiet || git commit -m "feat: implement feature to make tests pass (GREEN)"
+      cd "${WORKTREE_PATH}"
+      git add -- <modified_files> "${FEATURE_SLUG}/review_prompt.md"
+      [ -f "${FEATURE_SLUG}/reviewer_scorecard.md" ] && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
+      git diff --cached --quiet || git commit -m "feat: implement feature to make tests pass (GREEN)"
      ```
      *(Note: In Heavy Mode, slice commits and pushes already occurred inside Step 4e tip; the `git diff --cached --quiet` guard ensures Step 5 is a clean no-op if the working tree is already clean).*
      - **Emit External Review Prompt (GREEN Commit Gate - Phase 2 Step 5 / Phase 3 Step 6)**: When operating offline (`REMOTE_ENABLED=false`), emit the local file inspection pointer: `cat "${WORKTREE_PATH}/${FEATURE_SLUG}/review_prompt.md"`.
@@ -279,21 +283,23 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
   - Inspect review files via: `git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"`.
 - **Mode B: Shared Sandbox Branch Mode**: When all reviewers are pinned by platform to a single shared branch (e.g. Arena.ai):
   - File-level namespace isolation: Reviewers MUST write to `reviews/${REVIEWER_ID}.md` (never shared root `review.md`).
+  - Collision check: If `[ -f "reviews/${REVIEWER_ID}.md" ]`; then append `-2` to `REVIEWER_ID` before writing.
   - Rebase-push retry loop: `git pull --rebase origin <shared-branch>` (bounded retry with backoff, abort on conflict).
   - Reviewers are strictly forbidden from running `push --force` on the shared branch.
   - **Anti-Collision & Peer Isolation Invariants**:
-    1. `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md` (Mode B) or `review.md` (Mode A). Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/`, ephemeral artifacts (`reviewer_scorecard.md`, `review_prompt.md`, `spec.md`, `plan.md`), or any codebase file.
+    1. `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md` (Mode B) or `review.md` (Mode A). Repository object-store reads (e.g. `git show`, `git diff`) of the audited branch and ephemeral review artifacts are permitted; WRITES to any file outside the designated review file are strictly forbidden. Never modify peer files in `reviews/`.
     2. `BRANCH ISOLATION`: Reviewers are authorized to push ONLY to their assigned review branch (`review/${FEATURE_SLUG}/${REVIEWER_ID}` in Mode A, or `<shared-branch>` in Mode B). Pushing to or mutating `main`, `gemini/${FEATURE_SLUG}`, peer branches, or running `push --force` is strictly prohibited.
     3. `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md` (or `git add review.md`). Running `git add .` or `git add -A` is strictly prohibited.
-    4. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. If retries are exhausted, fall back to chat markdown or `scratch/external_reviews/<REVIEWER_ID>.md`.
+    4. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. If caused by duplicate ID (add/add conflict on your own file), regenerate `REVIEWER_ID` and retry with a fresh file. If retries are exhausted, fall back to chat markdown or `scratch/external_reviews/<REVIEWER_ID>.md`.
   - **Builder Ingestion Authorship Audit & Universal Tamper Tripwire**:
-    - When ingesting review branches, the builder verifies commit history scoped to branch commits (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`) and branch refs.
-    - **Universal Tamper Tripwire (File & Branch Invariants)**: Any file outside `reviews/${REVIEWER_ID}.md` (including `reviewer_scorecard.md`, peer files, and codebase files) and any branch outside the designated review branch are strictly READ-ONLY / UNTOUCHABLE for external agents.
-    - If any reviewer touches, truncates, stages, or deletes any file outside its designated review markdown file, OR pushes/mutates an unauthorized branch:
+    - When ingesting review branches, the builder verifies commit history scoped to shared branch commits (`before=$(git rev-parse "origin/<shared-branch>" 2>/dev/null || echo "") && git fetch origin <shared-branch> && git log --name-only "${before}..origin/<shared-branch>"`) and branch refs.
+    - **Universal Tamper Tripwire (File & Branch Invariants)**: Any file outside its designated review markdown file (`reviews/${REVIEWER_ID}.md` in Mode B, or `review.md` in Mode A) and any branch outside the designated review branch are strictly READ-ONLY / UNTOUCHABLE for external agents.
+    - If any reviewer commits modifications to any file outside its designated review markdown file, OR pushes/mutates an unauthorized branch:
       1. Flagged immediately as `TAMPERED/CLOBBERED` / `ROGUE AGENT VIOLATION`.
-      2. **Immediate High-Priority User Alert**: The builder immediately alerts the user with an urgent warning detailing the reviewer ID, offending commit/ref, and file/branch violation.
-      3. **Session Termination Directive**: Explicitly directs the user to **TERMINATE / CLOSE** that agent's session immediately.
-      4. The agent is moved to `Drop List (STOP / BANNED)` on `reviewer_scorecard.md`, and all commits/reviews from that agent are rejected and discarded.
+      2. **Verify-Before-Terminate**: The builder inspects the offending commit diff to confirm unauthorized mutation before issuing a termination alert.
+      3. **Immediate High-Priority User Alert**: The builder immediately alerts the user with an urgent warning detailing the reviewer ID, offending commit/ref, and file/branch violation.
+      4. **Session Termination Directive**: Explicitly directs the user to **TERMINATE / CLOSE** that agent's session immediately.
+      5. The agent is moved to `Drop List (STOP / BANNED)` on `reviewer_scorecard.md`, and all commits/reviews from that agent are rejected and discarded.
     - Inspect review files via paired fetch: `git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
   - **Mode B Review File Lifecycle**: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
 
@@ -319,7 +325,13 @@ To make it effortless for the user to correlate anonymous browser tabs (e.g. on 
 To eliminate conversational token bloat and prevent massive prompts/scorecards from cluttering chat history:
 - **In-Tree Ephemeral Prompt (`review_prompt.md`)**: At each milestone gate (Spec, Plan, RED Test, GREEN Commit/Push, Heavy Mode slices), the builder writes the complete review prompt to `${WORKTREE_PATH}/${FEATURE_SLUG}/review_prompt.md`.
 - **In-Tree Ephemeral Scorecard (`reviewer_scorecard.md`)**: During each triage round, the builder updates `${WORKTREE_PATH}/${FEATURE_SLUG}/reviewer_scorecard.md` with living ratings, signal levels, and `Retain List` / `Drop List` directives.
-- **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` are committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
+- **Scorecard Staging & Commit Cadence**: After each triage update, stage and commit the scorecard:
+  ```bash
+  test -f "${FEATURE_SLUG}/reviewer_scorecard.md" && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
+  git diff --cached --quiet || git commit -m "chore: update reviewer scorecard"
+  ```
+  Push with the next milestone (or immediately if `REMOTE_ENABLED=true` and a triage round just closed).
+- **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (when present) are committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
 - **Ultra-Compact Chat Dispatch Pointer**: In chat, the builder outputs only a minimal 2-line trigger for the user to copy-paste:
   ```bash
   git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"

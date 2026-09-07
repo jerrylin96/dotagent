@@ -27,7 +27,7 @@ You are acting as an independent adversarial reviewer auditing the latest change
    ```bash
    git add "reviews/${REVIEWER_ID}.md"
    ```
-4. **ABORT ON FOREIGN CONFLICT**: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry with backoff. Never touch a peer's file to resolve a merge.
+4. **ABORT ON FOREIGN CONFLICT**: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry with backoff. If caused by duplicate ID (add/add conflict on your own file), regenerate `REVIEWER_ID` and retry with a fresh file. Never touch a peer's file to resolve a merge.
 5. **UNIVERSAL TAMPER TRIPWIRE**: All files outside `reviews/${REVIEWER_ID}.md` (including `reviewer_scorecard.md`, `review_prompt.md`, `spec.md`, `plan.md`, and all codebase files) and all branches outside `arena/01a07d1f-dotgemini` are strictly READ-ONLY / UNTOUCHABLE. Any attempt to modify unauthorized files or push to unauthorized branches triggers immediate session termination by the user and permanent disqualification.
 
 ---
@@ -36,8 +36,9 @@ You are acting as an independent adversarial reviewer auditing the latest change
 Inspect the feature branch changes against base branch `origin/main`:
 ```bash
 git fetch origin main gemini/external-review-prompts-50ee34
-git diff origin/main origin/gemini/external-review-prompts-50ee34
+git diff origin/main FETCH_HEAD
 ```
+*(Caution: If you re-run the show-pointer after the inspection fetch, re-fetch the feature branch alone first: `git fetch origin gemini/external-review-prompts-50ee34`)*
 
 Key areas to audit:
 1. **In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`)**:

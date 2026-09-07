@@ -25,6 +25,11 @@
     - Fallback ingestion path: `scratch/external_reviews/`
     - Scoped emission anchors across all milestone steps: Step 2 / 2b, Step 3 / 3b, Step 4d, Step 5 / Step 6 (`Phase 2 Step 5 / Phase 3 Step 6`), and Heavy Mode per-slice loops.
     - Ordering assertion: review branch purge appears after `APPROVE` in Step 7b.
+    - Mode A inspection command (`git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"`) and Mode B paired inspection command (`git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`).
+    - Scoped authorship audit log (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD` or tracking ref) rejecting `TAMPERED/CLOBBERED`.
+    - In-Tree Ephemeral Review Prompt dispatch pointer (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"`).
+    - Reviewer Signal Scorecard pointer (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"`).
+    - Universal Tamper Tripwire across file and branch invariants with user-mediated session termination directive.
   - Assert synchronization in `skills/adversarial-review/SKILL.md`:
     - Dispatch rule distinguishing standalone `/adversarial-review` (single pass chat) from post-push living branch mode.
     - Canonical prompt template anchors (`Mode B: Shared Sandbox Branch Mode`, `Reviewer Signal Scorecard`).
@@ -98,7 +103,7 @@
   - `scripts/tests/test_skill_references.py`
 - **GREEN Implementation Target**:
   - Assert `reviewer_scorecard.md` and Tamper Tripwire presence across all skills, guides, and tests.
-  - Create in-tree `external-review-prompts-50ee34/reviewer_scorecard.md` with Round 3 scorecard ratings and Retain/Drop lists.
+  - Create in-tree `external-review-prompts-50ee34/reviewer_scorecard.md` with living scorecard ratings and Retain/Drop lists.
   - Assert that tampering with `reviewer_scorecard.md` triggers immediate user termination alert and agent disqualification.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`

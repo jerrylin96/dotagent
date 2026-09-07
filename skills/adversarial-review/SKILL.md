@@ -131,7 +131,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `FILE ISOLATION`: Reviewers own only `reviews/${REVIEWER_ID}.md` and are forbidden from editing or deleting peer files.
     - `TARGETED STAGING`: Reviewers must run only `git add reviews/${REVIEWER_ID}.md` (never blanket `git add .` or `git add -A`).
     - `ABORT ON FOREIGN CONFLICT`: On merge/rebase conflict outside `reviews/${REVIEWER_ID}.md`, run `git rebase --abort`.
-    - `Builder Ingestion Authorship Audit & Universal Tamper Tripwire`: Builder verifies commits on shared branch (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`) touch only `reviews/${REVIEWER_ID}.md` and validates branch targets. If any commit touches any file outside `reviews/${REVIEWER_ID}.md` (including `reviewer_scorecard.md`, peer files, or repo files) or pushes to an unauthorized branch, it is flagged `TAMPERED/CLOBBERED`, the builder immediately alerts the user to terminate that agent's session, moves it to the `Drop List`, and rejects the commit.
+    - `Builder Ingestion Authorship Audit & Universal Tamper Tripwire`: Builder verifies commits on shared branch (`before=$(git rev-parse "origin/<shared-branch>" 2>/dev/null || echo "") && git fetch origin <shared-branch> && git log --name-only "${before}..origin/<shared-branch>"`) and validates branch targets. Verify-Before-Terminate: The builder inspects the offending commit diff to confirm unauthorized mutation before issuing a termination alert. If any commit touches any file outside its designated review markdown file (`reviews/${REVIEWER_ID}.md` in Mode B, or `review.md` in Mode A) or pushes to an unauthorized branch, it is flagged `TAMPERED/CLOBBERED`, the builder immediately alerts the user to terminate that agent's session, moves it to the `Drop List`, and rejects the commit.
     - Inspect review files via paired fetch: `git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
 - **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
 - **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.
@@ -143,7 +143,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
   - The scorecard provides explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)** so the user knows which review sessions to continue prompting and which to close.
   - **Universal Tamper Tripwire & Termination Directive**: If any external agent modifies any file outside its designated review markdown file or pushes to an unauthorized branch, the builder immediately alerts the user to terminate that agent's session and adds it to the `Drop List`.
-- **In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)**: To eliminate conversation context bloat, prompt instantiations and living scorecards are saved to in-tree files `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (committed and pushed with the milestone). Chat emits only the ultra-compact 2-line dispatch command (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"`) and scorecard pointer (`git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"`). Automatically purged at Step 7b.
+- **In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)**: To eliminate conversation context bloat, prompt instantiations and living scorecards are saved to in-tree files `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (committed and pushed with the milestone). Chat emits only the ultra-compact 2-line dispatch command (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"`) and scorecard pointer (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"`). Automatically purged at Step 7b.
 
 #### Canonical External Review Prompt Template
 ```text
@@ -159,11 +159,20 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
    - Push Commit SHA: <your-push-sha or "pending — confirm post-push">
 
 ### Anti-Collision & Peer Isolation Invariants
-1. FILE ISOLATION: You own ONLY reviews/${REVIEWER_ID}.md. Strictly forbidden to touch peer files in reviews/, ephemeral files, or codebase files.
+1. FILE ISOLATION: You own ONLY reviews/${REVIEWER_ID}.md. Repository object-store reads (e.g. git show, git diff) of the audited branch and ephemeral review artifacts are permitted; WRITES to any file outside reviews/${REVIEWER_ID}.md are strictly forbidden. Never modify peer files in reviews/.
 2. BRANCH ISOLATION: You are authorized to push ONLY to the specified review branch. Never push to main, gemini/${FEATURE_SLUG}, or peer branches. Never force-push.
 3. TARGETED STAGING: NEVER run git add . or git add -A. Run ONLY git add reviews/${REVIEWER_ID}.md.
-4. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort. If retries exhausted, fall back to chat markdown.
+4. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort. If caused by duplicate ID (add/add conflict on your own file), regenerate REVIEWER_ID and retry with a fresh file. If retries exhausted, fall back to chat markdown.
 5. UNIVERSAL TAMPER TRIPWIRE: All files outside reviews/${REVIEWER_ID}.md and all branches outside your assigned review branch are strictly READ-ONLY / UNTOUCHABLE. Touching unauthorized files or branches triggers immediate session termination by the user and permanent disqualification.
+
+### Inspection Target
+git fetch origin main ${BRANCH_NAME}
+git diff origin/main FETCH_HEAD
+(Caution: If you re-run the show-pointer after the inspection fetch, re-fetch the feature branch alone first: git fetch origin ${BRANCH_NAME})
+
+### Output Protocol & Checkout
+git fetch origin <shared-branch>
+git checkout <shared-branch>
 ```
 
 ### Subagent Context Compaction Template
