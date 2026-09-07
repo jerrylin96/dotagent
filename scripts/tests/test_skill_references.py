@@ -677,5 +677,11 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
     assert "Mode B: Shared Sandbox Branch Mode" in agents_c, "Missing Mode B in AGENTS.md"
 
+    # 10. Masked Identity Proof & Session Persistence contract across all documents
+    assert "Reviewer Identification Proof" in mf_c, "Missing Reviewer Identification Proof in make-feature SKILL.md"
+    assert "Session Continuity Directive" in mf_c, "Missing Session Continuity Directive in make-feature SKILL.md"
+    assert "Reviewer Identification Proof" in adv_c, "Missing Reviewer Identification Proof in adversarial-review SKILL.md"
+    assert "Reviewer Identification Proof" in agents_c, "Missing Reviewer Identification Proof in AGENTS.md"
+
 
 

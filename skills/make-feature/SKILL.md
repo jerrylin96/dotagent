@@ -254,6 +254,19 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
 - Every review document MUST include `AUDITED_SHA: <sha>` in the header to verify freshness.
 - Findings are append-only; resolved items are marked `[x] (Resolved in commit <sha>)`.
 
+### Masked Identity Proof & Session Persistence Protocol
+To make it effortless for the user to correlate anonymous browser tabs (e.g. on Arena.ai) with living review branches and scorecards:
+- **Mandatory Chat Banner**: Prompts mandate that the reviewer output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls):
+  ```text
+  ### 🪪 Reviewer Identification Proof
+  - **Reviewer ID**: `reviewer-<id>`
+  - **Target SHA Audited**: `<commit-sha>`
+  - **Committed Review File**: `reviews/reviewer-<id>.md`
+  - **Push Commit SHA**: `<sha>`
+  ```
+- **Session Continuity Directive**: On subsequent milestone turns (Spec -> Plan -> Test -> Code), prompts mandate: `Session Continuity Directive: If you already established your REVIEWER_ID in an earlier turn of this chat session, YOU MUST REUSE IT. Do NOT generate a new random ID.`
+- **Traceability Guarantee**: The user can glance at any browser tab, read the top banner, immediately correlate it with `reviews/${REVIEWER_ID}.md` on git and the builder's `Reviewer Signal Scorecard`, and confidently execute `Retain List` (`CONTINUE`) or `Drop List` (`STOP`).
+
 ### Autonomous Triage & Reviewer Signal Scorecard
 - **Precedence Hierarchy**: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
 - **Ponytail Triage Matrix**: Evaluate findings against Ponytail Senior Dev ladder (`ACCEPT` real defects vs `REJECT` speculative abstractions).

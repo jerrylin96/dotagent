@@ -82,6 +82,7 @@ For any code modification, feature addition, refactor, or skill creation:
      - Mode A (Isolated Review Branches): Reviewers operate on independent branches `review/<feature-name>-<hash>/<reviewer-id>` with `review.md`.
      - **Mode B: Shared Sandbox Branch Mode**: When reviewers are pinned to a single shared branch (e.g., Arena.ai), reviewers MUST isolate their work into `reviews/<reviewer-id>.md` and push via bounded rebase-retry loops (`git pull --rebase origin <shared-branch>`). Force-pushing is strictly forbidden.
    - **Reviewer Signal Scorecard & Triage**: Builder agents triage external feedback against the Precedence Hierarchy (`Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`) and emit a **Reviewer Signal Scorecard** (`HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`) with explicit user directives (**Retain List** / **Drop List**).
+   - **Masked Identity Proof & Session Persistence**: Review prompts mandate that external agents output a top-of-chat `Reviewer Identification Proof` banner and persist their `REVIEWER_ID` across prompt turns for effortless user browser tab correlation.
    - **Server-Truth Cleanup**: Prior to human merge, all remote review branches are completely purged via server enumeration (`git ls-remote`).
 
 ### Core Operating Behaviors

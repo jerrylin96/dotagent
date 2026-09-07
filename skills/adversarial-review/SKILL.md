@@ -127,6 +127,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with exponential backoff and abort on conflicts.
     - Reviewers are strictly forbidden from running `push --force` on the shared branch.
 - **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
+- **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.
 - **Reviewer Signal Scorecard & Triage**:
   - The builder agent triages external reviews according to the Precedence Hierarchy (`Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`) and applies the Ponytail Senior Dev ladder (`ACCEPT` real bugs vs. `REJECT` unrequested abstractions).
   - The builder emits a **Reviewer Signal Scorecard** categorizing each external reviewer:
