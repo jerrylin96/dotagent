@@ -710,5 +710,17 @@ def test_external_review_prompts_and_living_branches_contract():
         assert "FILE ISOLATION" in spec_c, "Missing FILE ISOLATION in spec.md"
         assert "Reviewer Identification Proof" in plan_c, "Missing Identity Proof in plan.md"
 
+    # 13. In-Tree Ephemeral Review Prompt Protocol (review_prompt.md)
+    assert "review_prompt.md" in mf_c, "Missing review_prompt.md in make-feature SKILL.md"
+    assert "git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md" in mf_c, (
+        "Missing dispatch command in make-feature SKILL.md"
+    )
+    assert "review_prompt.md" in adv_c, "Missing review_prompt.md in adversarial-review SKILL.md"
+    assert "review_prompt.md" in agents_c, "Missing review_prompt.md in AGENTS.md"
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        assert "review_prompt.md" in spec_c, "Missing review_prompt.md in spec.md"
+        assert "review_prompt.md" in plan_c, "Missing review_prompt.md in plan.md"
+
+
 
 

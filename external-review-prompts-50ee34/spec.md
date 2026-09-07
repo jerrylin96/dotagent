@@ -116,6 +116,16 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
    - Any commit touching codebase files, spec/plan, or peer files is flagged as `TAMPERED/CLOBBERED` and rejected.
    - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
 
+### 3.3c In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`)
+To eliminate conversational token bloat and prevent massive prompts from cluttering chat history:
+1. **In-Tree Persistence**: At each milestone gate (Spec, Plan, RED Test, GREEN Commit/Push, Heavy Mode slices), the builder writes the complete review prompt to `${WORKTREE_PATH}/${FEATURE_SLUG}/review_prompt.md`.
+2. **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` is committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
+3. **Ultra-Compact Chat Dispatch Pointer**: In chat, the builder outputs only a minimal 2-line trigger for the user to copy-paste:
+   ```bash
+   git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md
+   ```
+4. **Automatic Ephemeral Purge**: Because `review_prompt.md` resides in `${FEATURE_SLUG}/`, Step 7b's standard cleanup (`git rm -rf --ignore-unmatch "${FEATURE_SLUG}"`) automatically purges it before merge. Zero leftover prompt files pollute the target integration branch.
+
 ### 3.4 Autonomous Triage & Reviewer Signal Scorecard
 When external reviews are ingested:
 1. **Precedence Hierarchy**:

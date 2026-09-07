@@ -141,6 +141,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding.
     - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
   - The scorecard provides explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)** so the user knows which review sessions to continue prompting and which to close.
+- **In-Tree Ephemeral Review Prompt File (`review_prompt.md`)**: To eliminate conversation context bloat, prompt instantiations are saved to in-tree file `${FEATURE_SLUG}/review_prompt.md` (committed and pushed with the milestone). Chat emits only the ultra-compact 2-line dispatch command (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`). Automatically purged at Step 7b.
 
 #### Canonical External Review Prompt Template
 ```text

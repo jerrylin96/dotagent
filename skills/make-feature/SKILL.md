@@ -76,16 +76,16 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
      - Commit and push to remote origin for external agent inspection:
        ```bash
        cd "${WORKTREE_PATH}"
-       git add "${FEATURE_SLUG}/spec.md"
+       git add "${FEATURE_SLUG}/spec.md" "${FEATURE_SLUG}/review_prompt.md"
        git commit -m "spec: add initial feature spec for external review"
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin "${BRANCH_NAME}"
        fi
        ```
-     - **Emit External Review Prompt (Spec Gate)**: Immediately following commit (and push if remote enabled), emit the compact external review prompt instantiation targeting `${FEATURE_SLUG}/spec.md` and current commit SHA (referencing canonical template in `adversarial-review/SKILL.md`).
+     - **Emit External Review Prompt (Spec Gate)**: Write the complete external review prompt to in-tree file `${FEATURE_SLUG}/review_prompt.md` (committed and pushed with the milestone), and emit an ultra-compact 2-line chat dispatch pointer: `git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`.
    - **Step 2b (Subagent Adversarial Spec Review & Revision Sync)**:
      - Parent agent invokes `invoke_subagent` (`TypeName: self`, `Role: Adversarial Spec Reviewer`). Subagent audits `/spec` for missing edge cases, security/architectural risks, and unstated assumptions until `APPROVE`.
-     - On any `REVISE` iteration, update `${FEATURE_SLUG}/spec.md`, commit (`git commit -m "spec: address review feedback"`), push to `origin` if `REMOTE_ENABLED=true`, and re-emit the compact review prompt for external review agents.
+     - On any `REVISE` iteration, update `${FEATURE_SLUG}/spec.md` and `${FEATURE_SLUG}/review_prompt.md`, commit (`git commit -m "spec: address review feedback"`), push to `origin` if `REMOTE_ENABLED=true`, and re-emit the 2-line review_prompt.md dispatch pointer for external review agents.
    - **Step 2c (Human Approval Gate & Early Abort Routine)**:
      - **PAUSE** and wait for explicit human approval of `/spec`. Provide clickable links to GitHub remote file and local worktree file.
      - **Early Abort Teardown**: If the human engineer rejects or cancels the feature at Step 2c:
@@ -125,16 +125,16 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
      - Commit and push to remote origin:
        ```bash
        cd "${WORKTREE_PATH}"
-       git add "${FEATURE_SLUG}/plan.md"
+       git add "${FEATURE_SLUG}/plan.md" "${FEATURE_SLUG}/review_prompt.md"
        git commit -m "plan: add implementation plan for external review"
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin "${BRANCH_NAME}"
        fi
        ```
-     - **Emit External Review Prompt (Plan Gate)**: Immediately following commit (and push if remote enabled), emit the compact external review prompt instantiation targeting `${FEATURE_SLUG}/plan.md` and current commit SHA.
+     - **Emit External Review Prompt (Plan Gate)**: Write the complete prompt to `${FEATURE_SLUG}/review_prompt.md` (committed and pushed with the milestone), and emit the compact 2-line chat dispatch pointer (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`).
    - **Step 3b (Subagent Adversarial Plan Review & Revision Sync)**:
      - Parent agent invokes `invoke_subagent` (`TypeName: self`, `Role: Adversarial Plan Reviewer`). Subagent audits `/plan` for atomic task sizing, dependency ordering, TDD coverage, and worktree/env safety until `APPROVE`.
-     - On any `REVISE` iteration, update `${FEATURE_SLUG}/plan.md`, commit (`git commit -m "plan: address review feedback"`), push to `origin` if `REMOTE_ENABLED=true`, and re-emit the compact review prompt for external review agents.
+     - On any `REVISE` iteration, update `${FEATURE_SLUG}/plan.md` and `${FEATURE_SLUG}/review_prompt.md`, commit (`git commit -m "plan: address review feedback"`), push to `origin` if `REMOTE_ENABLED=true`, and re-emit the 2-line review_prompt.md dispatch pointer for external review agents.
    - **Step 3c (Human Approval Gate & Early Abort Routine)**:
      - **PAUSE** and wait for explicit human approval of `/plan`. Provide clickable links to GitHub remote file and local worktree file.
      - **Early Abort Teardown**: If rejected or cancelled, execute the same abort teardown routine as Step 2c (obtaining explicit confirmation ("abort feature") first).
@@ -148,14 +148,14 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
      - *Before writing any implementation code*, stage and commit the failing RED test suite:
        ```bash
        cd "${WORKTREE_PATH}"
-       git add <test_files>
+       git add <test_files> "${FEATURE_SLUG}/review_prompt.md"
        git commit -m "test: add RED test suite (failing)"
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin "${BRANCH_NAME}"
        fi
        ```
      - This establishes cryptographic proof of TDD rigor and allows external agents and CI bots on GitHub to inspect tests independently of implementation code.
-     - **Emit External Review Prompt (RED Test Gate)**: Immediately following commit (and push if remote enabled), emit the compact external review prompt instantiation targeting the newly added RED test files and current commit SHA.
+     - **Emit External Review Prompt (RED Test Gate)**: Write the complete prompt to `${FEATURE_SLUG}/review_prompt.md` (committed and pushed with the milestone), and emit the compact 2-line chat dispatch pointer (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`).
    - **Step 4e (Write GREEN Implementation & Verify Pass)**: Write minimal implementation code to make approved RED tests pass. Run `run_in_env.py` to confirm 100% GREEN pass rate and linter check.
      > [!IMPORTANT]
      > **Empirical Grounding Directive**: Prohibit declaring success, test passes, or schema validity without empirical execution output present in the context window.
@@ -163,7 +163,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
      > **Sequential Subagent Delegation (Heavy Mode)**: If the approved `/plan` specifies `Sequential Subagents`, execution subagents MUST run sequentially using `Workspace: inherit` (or target worktree path) so all slice commits land on `${BRANCH_NAME}`. In Heavy Mode (`/make-feature heavy`), each task slice builder executes a strict 2-stage commit cycle:
      > 1. Write slice RED tests, trigger `Adversarial Test Reviewer` subagent, stage & commit `test(slice-N): add RED test suite (failing)`, and push to `origin` if `REMOTE_ENABLED=true`.
      > 2. Write slice GREEN implementation, confirm 100% pass, trigger slice `Adversarial Code Reviewer` subagent, stage & commit `feat(slice-N): implement slice N (GREEN)`, push to `origin` if `REMOTE_ENABLED=true`, update `scratchpad.md`, and advance to the next slice. Parent agent MUST clean up review subagents via `manage_subagents` (`Action: "kill"`). Max 3 REJECT cycles per review gate before escalating to human engineer.
-     - **Emit External Review Prompt (Heavy Mode Slice Gate)**: Immediately following push of slice RED tests or slice GREEN implementation, emit the compact external review prompt.
+     - **Emit External Review Prompt (Heavy Mode Slice Gate)**: Immediately following push of slice RED tests or slice GREEN implementation, update in-tree `${FEATURE_SLUG}/review_prompt.md` and emit the compact 2-line chat dispatch pointer (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`).
    - **Step 4f (Builder Pre-Review Quality Check & Manifest Creation)**:
      - Update `<appDataDir>/brain/<conversation-id>/scratch/scratchpad.md` with build step findings and empirical test logs.
      - Create review manifest artifact in ephemeral conversation directory (`<appDataDir>/brain/<conversation-id>/review_manifest_<feature>.md`).
@@ -172,11 +172,11 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
    - **Step 5 (Stage & Commit GREEN Implementation)**:
      ```bash
      cd "${WORKTREE_PATH}"
-     git add -- <modified_files>
+     git add -- <modified_files> "${FEATURE_SLUG}/review_prompt.md"
      git diff --cached --quiet || git commit -m "feat: implement feature to make tests pass (GREEN)"
      ```
      *(Note: In Heavy Mode, slice commits and pushes already occurred inside Step 4e tip; the `git diff --cached --quiet` guard ensures Step 5 is a clean no-op if the working tree is already clean).*
-     - **Emit External Review Prompt (GREEN Commit Gate - Phase 2 Step 5 / Phase 3 Step 6)**: When operating offline (`REMOTE_ENABLED=false`), emit the compact external review prompt targeting local git diff (`git diff ${BASE_BRANCH}...HEAD`).
+     - **Emit External Review Prompt (GREEN Commit Gate - Phase 2 Step 5 / Phase 3 Step 6)**: When operating offline (`REMOTE_ENABLED=false`), write the prompt to `${FEATURE_SLUG}/review_prompt.md` targeting local git diff (`git diff ${BASE_BRANCH}...HEAD`), and output the local file pointer in chat.
 
 4. **Phase 3 (Push, Adversarial Code Review Gate & Ephemeral Folder Cleanup)**:
    - **Goal**: Feature implementation pushed to `origin`, subagent `/adversarial-review` executed, ephemeral review folder purged from git tree, and post-review report artifact created in ephemeral conversation brain.
@@ -186,7 +186,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
        git push origin "${BRANCH_NAME}"
      fi
      ```
-     - **Emit External Review Prompt (GREEN Push Gate - Phase 2 Step 5 / Phase 3 Step 6)**: Immediately following push to remote origin, emit the compact external review prompt instantiation targeting full remote diff and current commit SHA. If remote push fails, fall back to emitting prompt targeting local diff (`git diff ${BASE_BRANCH}...HEAD`).
+     - **Emit External Review Prompt (GREEN Push Gate - Phase 2 Step 5 / Phase 3 Step 6)**: Immediately following push to remote origin, write the prompt to `${FEATURE_SLUG}/review_prompt.md` targeting full remote diff and current commit SHA, and emit the compact 2-line chat dispatch pointer (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`). If remote push fails, fall back to emitting prompt targeting local diff (`git diff ${BASE_BRANCH}...HEAD`).
    - **Step 7 (Subagent Adversarial Review Loop)**:
      - *Mandatory Subagent Delegation*: The parent agent MUST NOT run the review in its own context. The parent agent MUST execute `invoke_subagent` (`TypeName: self`, `Role: Adversarial Code Reviewer`, `Workspace: inherit`).
      - *Subagent Compaction Block*: The subagent prompt MUST include a compacted context block (≤ 30 lines) formatted as:
@@ -304,6 +304,16 @@ To make it effortless for the user to correlate anonymous browser tabs (e.g. on 
   ```
 - **Session Continuity Directive**: On subsequent milestone turns (Spec -> Plan -> Test -> Code), prompts mandate: `Session Continuity Directive: If you already established your REVIEWER_ID in an earlier turn of this chat session, YOU MUST REUSE IT. Do NOT generate a new random ID.`
 - **Traceability Guarantee**: The user can glance at any browser tab, read the top banner, immediately correlate it with `reviews/${REVIEWER_ID}.md` on git and the builder's `Reviewer Signal Scorecard`, and confidently execute `Retain List` (`CONTINUE`) or `Drop List` (`STOP`).
+
+### In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`)
+To eliminate conversational token bloat and prevent massive prompts from cluttering chat history:
+- **In-Tree Persistence**: At each milestone gate (Spec, Plan, RED Test, GREEN Commit/Push, Heavy Mode slices), the builder writes the complete review prompt to `${WORKTREE_PATH}/${FEATURE_SLUG}/review_prompt.md`.
+- **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` is committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
+- **Ultra-Compact Chat Dispatch Pointer**: In chat, the builder outputs only a minimal 2-line trigger for the user to copy-paste:
+  ```bash
+  git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md
+  ```
+- **Automatic Ephemeral Purge**: Because `review_prompt.md` resides in `${FEATURE_SLUG}/`, Step 7b's standard cleanup (`git rm -rf --ignore-unmatch "${FEATURE_SLUG}"`) automatically purges it before merge. Zero leftover prompt files pollute the target integration branch.
 
 ### Autonomous Triage & Reviewer Signal Scorecard
 - **Non-Blocking Asynchronous Invariant**: External review prompt emission and reviewer audits are asynchronous and non-blocking; the lifecycle pauses only at formal human approval gates (Steps 2c, 3c, 4g, 8).

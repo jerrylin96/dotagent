@@ -55,10 +55,12 @@
       - Non-merging PR enforcement in Step 8.
       - Untrusted input defense rule.
       - Fallback ingestion at `scratch/external_reviews/<REVIEWER_ID>.md`.
+      - In-Tree Ephemeral Review Prompt Protocol: write prompts to `${FEATURE_SLUG}/review_prompt.md` at each milestone, push atomically, and emit 2-line dispatch command in chat.
   - Update `adversarial-review/SKILL.md`:
     - Document canonical external review prompt templates, grammar, and triage scorecard.
     - Add Masked Reviewer Identity Proof & Session Persistence protocol (`Reviewer Identification Proof`, `Session Continuity Directive`).
     - Add Anti-Collision & Peer Isolation invariants (`FILE ISOLATION`, `TARGETED STAGING`, `ABORT ON FOREIGN CONFLICT`, `Builder Ingestion Authorship Audit` rejecting `TAMPERED/CLOBBERED`).
+    - Document In-Tree Ephemeral Review Prompt File (`review_prompt.md`) and 2-line chat pointer.
   - Verify `.gitignore` includes `scratch/`.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
@@ -67,8 +69,23 @@
 - **Files**:
   - `AGENTS.md`
 - **GREEN Implementation Target**:
-  - Update §3 "Mandatory Default Execution Pipeline & Milestone Gates" in `AGENTS.md` to document post-commit/push external review prompts, living review branches, and the Reviewer Signal Scorecard.
+  - Update §3 "Mandatory Default Execution Pipeline & Milestone Gates" in `AGENTS.md` to document post-commit/push external review prompts, living review branches, the Reviewer Signal Scorecard, and In-Tree Ephemeral Prompts (`review_prompt.md`).
   - Confirm `GEMINI.md` symlink integrity.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> ruff check .`
+
+### Task 4: Implement In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`) & Test Assertions
+- **Files**:
+  - `skills/make-feature/SKILL.md`
+  - `skills/adversarial-review/SKILL.md`
+  - `AGENTS.md`
+  - `external-review-prompts-50ee34/review_prompt.md`
+  - `scripts/tests/test_skill_references.py`
+- **GREEN Implementation Target**:
+  - Assert `review_prompt.md` presence and 2-line pointer commands in `make-feature/SKILL.md`, `adversarial-review/SKILL.md`, `AGENTS.md`, and in-tree spec/plan.
+  - Instantiate in-tree `external-review-prompts-50ee34/review_prompt.md` with active reviewer instructions and commit/push.
+- **Verify Command**:
+  `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
+  `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> ruff check .`
+
