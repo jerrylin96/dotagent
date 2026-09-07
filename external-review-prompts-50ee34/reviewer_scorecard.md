@@ -6,14 +6,14 @@
 
 ---
 
-## Active Scorecard (Round 10 Triage)
-- **Last triaged branch tip**: `f2de35c687c9c7e9c1c3533666311e942da9684e`
+## Active Scorecard (Round 11 Triage)
+- **Last triaged branch tip**: `f08f4dd95467a23f73510ce602c3862fcb023260`
 
 | Reviewer ID | Speed / State | Signal Level | Key Contributions / Findings | Directive |
 |---|---|---|---|---|
-| `reviewer-18251` | Complete / **APPROVE** | **HIGH SIGNAL** | Certified 7d18449; all P0/P1/P2 resolved; waived carried nits for pre-merge | **CONTINUE** |
-| `reviewer-24562` | Complete / **APPROVE** | **HIGH SIGNAL** | Certified 7d18449; zero open findings across entire protocol | **CONTINUE** |
-| `reviewer-3285` | Fast / Forensic | **HIGH SIGNAL** | Caught branch continuity ancestor guard (git merge-base --is-ancestor) | **CONTINUE** |
+| `reviewer-18251` | Complete / **Audited** | **HIGH SIGNAL** | Caught ancestor guard subshell variable loss in c577ca4; verified 31 tests pass | **CONTINUE** |
+| `reviewer-24562` | Complete / **Audited** | **HIGH SIGNAL** | Caught ancestor guard subshell variable loss in c577ca4; confirmed clean quoting | **CONTINUE** |
+| `reviewer-3285` | Complete / **Audited** | **HIGH SIGNAL** | Proved subshell no-op empirically; suggested brace-anchored test asserts & sync nits | **CONTINUE** |
 | 4th Agent | Terminated | **UNRESPONSIVE / STUCK** | Session hung / aborted earlier by user | **STOP** (Closed) |
 
 ---

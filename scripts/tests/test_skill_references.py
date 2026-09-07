@@ -632,7 +632,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "Mode B: Shared Sandbox Branch Mode" in mf_c, "Missing Mode B in make-feature SKILL.md"
     assert "reviews/${REVIEWER_ID}.md" in mf_c, "Missing reviews/${REVIEWER_ID}.md in make-feature SKILL.md"
     assert "git pull --rebase origin <shared-branch>" in mf_c, "Missing rebase-push retry in make-feature SKILL.md"
-    assert "push --force" in mf_c and "shared" in mf_c, "Missing ban on force-push in make-feature SKILL.md"
+    assert "forbidden from running `push --force` on the shared branch" in mf_c, "Missing ban on force-push in make-feature SKILL.md"
 
     # 4. Precedence Hierarchy & Reviewer Signal Scorecard
     precedence = "Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback"
@@ -656,7 +656,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in mf_c, (
         "Missing Mode A builder inspection command in make-feature SKILL.md"
     )
-    assert 'git merge-base --is-ancestor "$before" FETCH_HEAD' in mf_c, "Missing ancestor guard in make-feature SKILL.md"
+    assert '{ git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; }' in mf_c, "Missing ancestor guard in make-feature SKILL.md"
     assert 'git log --name-only "${before}..FETCH_HEAD"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
 
     # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
@@ -690,7 +690,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in adv_c, (
         "Missing Mode A inspection command in adversarial-review SKILL.md"
     )
-    assert 'git merge-base --is-ancestor "$before" FETCH_HEAD' in adv_c, "Missing ancestor guard in adversarial-review SKILL.md"
+    assert '{ git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; }' in adv_c, "Missing ancestor guard in adversarial-review SKILL.md"
     assert 'git log --name-only "${before}..FETCH_HEAD"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
     assert 'git diff "${BASE_SHA}" FETCH_HEAD' in adv_c, "Missing robust inspection command in adversarial-review SKILL.md"
 

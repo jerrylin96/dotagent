@@ -114,11 +114,11 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
    - `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md` (or `git add review.md`). Running `git add .` or `git add -A` is strictly prohibited.
    - `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. If caused by duplicate ID (add/add conflict on your own file), regenerate `REVIEWER_ID` and retry with a fresh file.
 3. **Builder Ingestion Authorship Audit & Universal Tamper Tripwire**:
-   - When pulling shared review branches, the builder verifies commit history scoped to shared branch commits (`git fetch origin <shared-branch> && (git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}") && git log --name-only "${before}..FETCH_HEAD"`) and remote branch refs (with `before` tracked from prior triaged SHA persisted in `scratchpad.md` and guarded with ancestor fallback to `origin/${BRANCH_NAME}` to ensure all review commits are audited without false positives).
+   - When pulling shared review branches, the builder verifies commit history scoped to shared branch commits (`git fetch origin <shared-branch> && { git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; } && git log --name-only "${before}..FETCH_HEAD"`) and remote branch refs (with `before` tracked from prior triaged SHA persisted in `scratchpad.md`; at initial dispatch on a long-lived shared branch, record baseline `before=$(git rev-parse origin/<shared-branch> 2>/dev/null || echo "origin/${BRANCH_NAME}")` to `scratchpad.md`, and guard with ancestor fallback to `origin/${BRANCH_NAME}` to ensure all review commits are audited without false positives).
    - Any commit touching codebase files, spec/plan, `reviewer_scorecard.md`, or peer files, or attempting to push to an unauthorized branch is flagged as `TAMPERED/CLOBBERED` and rejected.
    - **Verify-Before-Terminate**: The builder inspects the offending commit diff to verify unauthorized mutation before issuing a termination directive.
    - If any reviewer commits modifications outside its designated review markdown file (`reviews/${REVIEWER_ID}.md` in Mode B, or `review.md` in Mode A) or mutates unauthorized branches, the builder immediately alerts the user with an urgent directive to **TERMINATE / DROP** that reviewer's session.
-   - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
+   - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned by default (or archived if configured per session retention policy).
 
 ### 3.3c In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)
 To eliminate conversational token bloat and prevent massive prompts from cluttering chat history:
@@ -127,7 +127,8 @@ To eliminate conversational token bloat and prevent massive prompts from clutter
 3. **Atomic Push & Triage Cadence**: `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (when present) are committed and pushed alongside `spec.md`, `plan.md`, test files, or code. After each triage update, stage and commit the scorecard:
    ```bash
    test -f "${FEATURE_SLUG}/reviewer_scorecard.md" && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
-   git diff --cached --quiet || git commit -m "chore: update reviewer scorecard"
+   git diff --cached --quiet -- "${FEATURE_SLUG}/reviewer_scorecard.md" || git commit -m "chore: update reviewer scorecard" -- "${FEATURE_SLUG}/reviewer_scorecard.md"
+   test "$REMOTE_ENABLED" = "true" && git push origin "${BRANCH_NAME}"
    ```
 4. **Ultra-Compact Chat Dispatch Pointer**: In chat, the builder outputs only a minimal 2-line trigger for the user to copy-paste:
    ```bash

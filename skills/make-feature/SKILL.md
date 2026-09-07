@@ -298,7 +298,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
     3. `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md` (or `git add review.md`). Running `git add .` or `git add -A` is strictly prohibited.
     4. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. If caused by duplicate ID (add/add conflict on your own file), regenerate `REVIEWER_ID` and retry with a fresh file. If retries are exhausted, fall back to chat markdown or `scratch/external_reviews/<REVIEWER_ID>.md`.
   - **Builder Ingestion Authorship Audit & Universal Tamper Tripwire**:
-    - When ingesting review branches, the builder verifies commit history scoped to shared branch commits (`git fetch origin <shared-branch> && (git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}") && git log --name-only "${before}..FETCH_HEAD"`) and branch refs (with `before` tracked from prior triaged SHA persisted in `scratchpad.md` and guarded with ancestor fallback to `origin/${BRANCH_NAME}` to ensure all review commits are audited without false positives).
+    - When ingesting review branches, the builder verifies commit history scoped to shared branch commits (`git fetch origin <shared-branch> && { git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; } && git log --name-only "${before}..FETCH_HEAD"`) and branch refs (with `before` tracked from prior triaged SHA persisted in `scratchpad.md`; at initial dispatch on a long-lived shared branch, record baseline `before=$(git rev-parse origin/<shared-branch> 2>/dev/null || echo "origin/${BRANCH_NAME}")` to `scratchpad.md`, and guard with ancestor fallback to `origin/${BRANCH_NAME}` to ensure all review commits are audited without false positives).
     - **Universal Tamper Tripwire (File & Branch Invariants)**: Any file outside its designated review markdown file (`reviews/${REVIEWER_ID}.md` in Mode B, or `review.md` in Mode A) and any branch outside the designated review branch are strictly READ-ONLY / UNTOUCHABLE for external agents.
     - If any reviewer commits modifications to any file outside its designated review markdown file, OR pushes/mutates an unauthorized branch:
       1. Flagged immediately as `TAMPERED/CLOBBERED` / `ROGUE AGENT VIOLATION`.
@@ -307,7 +307,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
       4. **Session Termination Directive**: Explicitly directs the user to **TERMINATE / CLOSE** that agent's session immediately.
       5. The agent is moved to `Drop List (STOP / BANNED)` on `reviewer_scorecard.md`, and all commits/reviews from that agent are rejected and discarded.
     - Inspect review files via paired fetch: `git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
-  - **Mode B Review File Lifecycle**: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
+  - **Mode B Review File Lifecycle**: At signoff time, review files triaged for the merged SHA are pruned by default (or archived if configured per session retention policy).
 
 ### Freshness Handshake & Living Status
 - Every review document MUST include `AUDITED_SHA: <sha>` in the header to verify freshness.
@@ -334,7 +334,8 @@ To eliminate conversational token bloat and prevent massive prompts/scorecards f
 - **Scorecard Staging & Commit Cadence**: After each triage update, stage and commit the scorecard:
   ```bash
   test -f "${FEATURE_SLUG}/reviewer_scorecard.md" && git add "${FEATURE_SLUG}/reviewer_scorecard.md"
-  git diff --cached --quiet || git commit -m "chore: update reviewer scorecard"
+  git diff --cached --quiet -- "${FEATURE_SLUG}/reviewer_scorecard.md" || git commit -m "chore: update reviewer scorecard" -- "${FEATURE_SLUG}/reviewer_scorecard.md"
+  test "$REMOTE_ENABLED" = "true" && git push origin "${BRANCH_NAME}"
   ```
   Push with the next milestone (or immediately if `REMOTE_ENABLED=true` and a triage round just closed).
 - **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (when present) are committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
