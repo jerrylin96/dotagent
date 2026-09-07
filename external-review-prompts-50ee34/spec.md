@@ -74,11 +74,14 @@ When external reviews are ingested:
    The builder agent outputs an explicit triage matrix:
    - `ACCEPT`: Real defect, logic bug, security issue, boundary error, or broken spec invariant -> execute fix.
    - `REJECT`: Speculative abstraction, unneeded interface/factory, style preference, hallucinated API, or contradiction of agreed spec -> reject with 1-line Ponytail rationale.
-3. **Reviewer Signal Scorecard**:
+3. **Reviewer Signal Scorecard & Explicit Directives**:
    The builder agent rates each participant:
-   - `HIGH SIGNAL`: Concrete P0/P1 bugs caught, falsifiable claims, adhered to format. (Continue engaging in next milestone).
-   - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding. (Disregard in next milestone).
-   - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts. (Drop from review tracking).
+   - `HIGH SIGNAL`: Concrete P0/P1 bugs caught, falsifiable claims, adhered to format.
+   - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding.
+   - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
+   The scorecard MUST culminate in explicit user action directives:
+   - **Retain List (`CONTINUE`)**: Explicit list of reviewer sessions the user should continue prompting at the next milestone gate.
+   - **Drop List (`STOP`)**: Explicit list of reviewer sessions the user should stop prompting or close, preventing wasted copy-paste overhead on unproductive agents.
 
 ### 3.5 Automated Ephemeral Cleanup & Zero-Trace Purge
 1. **Step 7b & Step 8 Purge Snippet**:

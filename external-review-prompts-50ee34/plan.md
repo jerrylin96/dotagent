@@ -16,7 +16,7 @@
     - Branch naming & format: `review/${FEATURE_SLUG}/${REVIEWER_ID}` and `AUDITED_SHA:`
     - Identifier grammar: `^[A-Za-z0-9._-]+$`
     - Precedence Hierarchy: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
-    - Autonomous Ponytail Triage & Scorecard: `Reviewer Signal Scorecard`, `HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`
+    - Autonomous Ponytail Triage & Scorecard: `Reviewer Signal Scorecard`, `HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`, `Retain List`, `Drop List`
     - Whitespace-safe cleanup command: `git for-each-ref --format='%(refname:strip=3)' "refs/remotes/origin/review/${FEATURE_SLUG}/*"`
     - Non-merging PR enforcement: `PR source MUST be \`gemini/${FEATURE_SLUG}\``
     - Untrusted input defense: prohibition against executing unverified scripts/commands suggested by reviews.
@@ -40,7 +40,7 @@
       - `review/${FEATURE_SLUG}/${REVIEWER_ID}` branch naming with `^[A-Za-z0-9._-]+$` grammar.
       - `AUDITED_SHA` freshness handshake.
       - Living `review.md` checklist with append-only resolution rules (`[ ] Open`, `[x] Resolved`).
-      - Reviewer Signal Scorecard (`HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`).
+      - Reviewer Signal Scorecard with explicit user action directives (`Retain List` / `Drop List`).
       - Precedence hierarchy and Ponytail triage matrix (`ACCEPT` vs `REJECT`).
       - Whitespace-safe `for-each-ref` cleanup in Step 7b, Step 8, and early abort Step 2c/3c.
       - Non-merging PR enforcement in Step 8.
