@@ -656,7 +656,8 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in mf_c, (
         "Missing Mode A builder inspection command in make-feature SKILL.md"
     )
-    assert 'git log --name-only "${before:-origin/${BRANCH_NAME}}..FETCH_HEAD"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
+    assert 'git merge-base --is-ancestor "$before" FETCH_HEAD' in mf_c, "Missing ancestor guard in make-feature SKILL.md"
+    assert 'git log --name-only "${before}..FETCH_HEAD"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
 
     # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
     assert "Emit External Review Prompt (Spec Gate)" in mf_c, "Missing Spec Gate emission anchor"
@@ -689,7 +690,8 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in adv_c, (
         "Missing Mode A inspection command in adversarial-review SKILL.md"
     )
-    assert 'git log --name-only "${before:-origin/${BRANCH_NAME}}..FETCH_HEAD"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
+    assert 'git merge-base --is-ancestor "$before" FETCH_HEAD' in adv_c, "Missing ancestor guard in adversarial-review SKILL.md"
+    assert 'git log --name-only "${before}..FETCH_HEAD"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
     assert 'git diff "${BASE_SHA}" FETCH_HEAD' in adv_c, "Missing robust inspection command in adversarial-review SKILL.md"
 
     # 9. Synchronization in AGENTS.md

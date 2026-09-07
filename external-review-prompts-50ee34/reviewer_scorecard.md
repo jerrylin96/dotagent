@@ -6,14 +6,14 @@
 
 ---
 
-## Active Scorecard (Round 9 Triage)
-- **Last triaged branch tip**: `8cc674c1c5f9965e70a3481415e2c6aab7b53bb9`
+## Active Scorecard (Round 10 Triage)
+- **Last triaged branch tip**: `f2de35c687c9c7e9c1c3533666311e942da9684e`
 
 | Reviewer ID | Speed / State | Signal Level | Key Contributions / Findings | Directive |
 |---|---|---|---|---|
-| `reviewer-18251` | Deep / Active | **HIGH SIGNAL** | Caught first-ingest audit blind window (FETCH_HEAD..FETCH_HEAD empty range) | **CONTINUE** |
-| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Caught unset before durable persistence gap; single Nit remaining | **CONTINUE** |
-| `reviewer-3285` | Fast / Forensic | **HIGH SIGNAL** | Proved fail-open blind spot in scratch repo; caught unset before edge | **CONTINUE** |
+| `reviewer-18251` | Complete / **APPROVE** | **HIGH SIGNAL** | Certified 7d18449; all P0/P1/P2 resolved; waived carried nits for pre-merge | **CONTINUE** |
+| `reviewer-24562` | Complete / **APPROVE** | **HIGH SIGNAL** | Certified 7d18449; zero open findings across entire protocol | **CONTINUE** |
+| `reviewer-3285` | Fast / Forensic | **HIGH SIGNAL** | Caught branch continuity ancestor guard (git merge-base --is-ancestor) | **CONTINUE** |
 | 4th Agent | Terminated | **UNRESPONSIVE / STUCK** | Session hung / aborted earlier by user | **STOP** (Closed) |
 
 ---
