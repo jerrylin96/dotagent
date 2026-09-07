@@ -6,13 +6,13 @@
 
 ---
 
-## Active Scorecard (Round 5 Triage)
+## Active Scorecard (Round 7 Triage)
 
 | Reviewer ID | Speed / State | Signal Level | Key Contributions / Findings | Directive |
 |---|---|---|---|---|
-| `reviewer-3285` | Fast / Ready | **HIGH SIGNAL** | Caught unstaged scorecard gap, authorsip audit range false positive, read contradiction | **CONTINUE** |
-| `reviewer-18251` | Thorough / Done | **HIGH SIGNAL** | Caught shallow-clone inspection diff failure, Mode A/B tripwire path parity, add/add recovery | **CONTINUE** |
-| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Caught living scorecard commit cadence, multi-branch FETCH_HEAD caution, read-carveout | **CONTINUE** |
+| `reviewer-18251` | Complete / **APPROVE** | **HIGH SIGNAL** | Confirmed all P0/P1/P2 resolved; caught `&&...||` precedence nit | **CONTINUE** |
+| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Caught P1 vacuous inspection diff; proved paired base SHA fix; caught P2 invariant reconciliation | **CONTINUE** |
+| `reviewer-3285` | Fast / Forensic | **HIGH SIGNAL** | Caught P1 multi-ref FETCH_HEAD diff defect; caught P2 spec pasted line prefixes; empty-before audit | **CONTINUE** |
 | 4th Agent | Terminated | **UNRESPONSIVE / STUCK** | Session hung / aborted earlier by user | **STOP** (Closed) |
 
 ---

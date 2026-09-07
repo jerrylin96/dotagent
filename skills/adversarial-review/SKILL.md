@@ -167,9 +167,8 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 5. UNIVERSAL TAMPER TRIPWIRE: All files outside reviews/${REVIEWER_ID}.md and all branches outside your assigned review branch are strictly READ-ONLY / UNTOUCHABLE. Touching unauthorized files or branches triggers immediate session termination by the user and permanent disqualification.
 
 ### Inspection Target
-git fetch origin main ${BRANCH_NAME}
-git diff origin/main FETCH_HEAD
-(Caution: If you re-run the show-pointer after the inspection fetch, re-fetch the feature branch alone first: git fetch origin ${BRANCH_NAME})
+git fetch origin ${BASE_BRANCH} && BASE_SHA=$(git rev-parse FETCH_HEAD)
+git fetch origin ${BRANCH_NAME} && git diff "${BASE_SHA}" FETCH_HEAD
 
 ### Output Protocol & Checkout
 git fetch origin <shared-branch>

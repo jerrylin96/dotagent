@@ -690,6 +690,7 @@ def test_external_review_prompts_and_living_branches_contract():
         "Missing Mode A inspection command in adversarial-review SKILL.md"
     )
     assert 'git log --name-only "${before}..origin/<shared-branch>"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
+    assert 'git diff "${BASE_SHA}" FETCH_HEAD' in adv_c, "Missing robust inspection command in adversarial-review SKILL.md"
 
     # 9. Synchronization in AGENTS.md
     assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
@@ -771,6 +772,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "External Review Convergence Gate" in agents_c, "Missing Convergence Gate in AGENTS.md"
     if os.path.exists(spec_md) and os.path.exists(plan_md):
         assert "External Review Convergence Gate" in spec_c, "Missing Convergence Gate in spec.md"
+        assert not any(re.match(r"^\d{2,4}:\s", line) for line in spec_c.splitlines()), "Corrupted line-number prefixes in spec.md"
 
 
 

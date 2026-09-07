@@ -33,12 +33,11 @@ You are acting as an independent adversarial reviewer auditing the latest change
 ---
 
 #### Inspection & Review Target
-Inspect the feature branch changes against base branch `origin/main`:
+Inspect the feature branch changes against base branch `main`:
 ```bash
-git fetch origin main gemini/external-review-prompts-50ee34
-git diff origin/main FETCH_HEAD
+git fetch origin main && BASE_SHA=$(git rev-parse FETCH_HEAD)
+git fetch origin gemini/external-review-prompts-50ee34 && git diff "${BASE_SHA}" FETCH_HEAD
 ```
-*(Caution: If you re-run the show-pointer after the inspection fetch, re-fetch the feature branch alone first: `git fetch origin gemini/external-review-prompts-50ee34`)*
 
 Key areas to audit:
 1. **In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`)**:

@@ -347,7 +347,7 @@ To eliminate conversational token bloat and prevent massive prompts/scorecards f
 - **Automatic Ephemeral Purge**: Because `review_prompt.md` and `reviewer_scorecard.md` reside in `${FEATURE_SLUG}/`, Step 7b's standard cleanup (`git rm -rf --ignore-unmatch "${FEATURE_SLUG}"`) automatically purges them before merge. Zero leftover review files pollute the target integration branch.
 
 ### Autonomous Triage & Reviewer Signal Scorecard
-- **Non-Blocking Asynchronous Invariant**: External review prompt emission and reviewer audits are asynchronous and non-blocking; the lifecycle pauses only at formal human approval gates (Steps 2c, 3c, 4g, 8).
+- **Non-Blocking Asynchronous Invariant**: External review prompt emission and reviewer audits are asynchronous and non-blocking during slice execution; the lifecycle pauses only at formal human approval gates (Steps 2c, 3c, 4g, 8) and at the Step 7b External Review Convergence Gate when active reviewers remain on the Retain List (with human override).
 - **Precedence Hierarchy**: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
 - **Ponytail Triage Matrix**: Evaluate findings against Ponytail Senior Dev ladder (`ACCEPT` real defects vs `REJECT` speculative abstractions).
 - **Reviewer Signal Scorecard**:
