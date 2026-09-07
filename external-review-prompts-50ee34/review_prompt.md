@@ -51,8 +51,12 @@ Key areas to audit:
    - `FILE ISOLATION`, `TARGETED STAGING`, `ABORT ON FOREIGN CONFLICT`.
    - Builder rejects `TAMPERED/CLOBBERED` commits.
 4. **Offline Safety & Regression Hardening**:
-   - `git diff ${BASE_BRANCH}...HEAD` offline fallback.
+   - `git diff ${BASE_BRANCH} HEAD` offline fallback.
    - Server-truth cleanup (`git ls-remote`) at Step 7b, Step 8, and early abort Step 2c/3c.
+5. **External Review Convergence Gate & Termination Bound**:
+   - Step 7b pause restricted to Retain List (`CONTINUE`).
+   - Chat announcement of pending reviewers and human override option.
+   - Bounded unresponsiveness: 2 rounds max before demoting silent agents to `UNRESPONSIVE / STUCK`.
 
 ---
 

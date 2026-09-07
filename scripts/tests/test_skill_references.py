@@ -656,7 +656,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in mf_c, (
         "Missing Mode A builder inspection command in make-feature SKILL.md"
     )
-    assert 'git log --name-only "${before}..origin/<shared-branch>"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
+    assert 'git log --name-only "${before:-FETCH_HEAD}..FETCH_HEAD"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
 
     # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
     assert "Emit External Review Prompt (Spec Gate)" in mf_c, "Missing Spec Gate emission anchor"
@@ -665,7 +665,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "Emit External Review Prompt (Heavy Mode Slice Gate)" in mf_c, "Missing Heavy Mode Slice Gate emission anchor"
     assert "Emit External Review Prompt (GREEN Commit Gate" in mf_c, "Missing GREEN Commit Gate emission anchor"
     assert "Emit External Review Prompt (GREEN Push Gate" in mf_c, "Missing GREEN Push Gate emission anchor"
-    assert "git diff ${BASE_BRANCH}...HEAD" in mf_c, "Missing local-safe offline git diff command in make-feature SKILL.md"
+    assert "git diff ${BASE_BRANCH} HEAD" in mf_c, "Missing local-safe offline git diff command in make-feature SKILL.md"
 
     # 7. Cleanup ordering assertion (purge appears after APPROVE in Step 7b)
     step7_idx = mf_c.find("Step 7 (Subagent Adversarial Review Loop)")
@@ -689,7 +689,7 @@ def test_external_review_prompts_and_living_branches_contract():
     assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in adv_c, (
         "Missing Mode A inspection command in adversarial-review SKILL.md"
     )
-    assert 'git log --name-only "${before}..origin/<shared-branch>"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
+    assert 'git log --name-only "${before:-FETCH_HEAD}..FETCH_HEAD"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
     assert 'git diff "${BASE_SHA}" FETCH_HEAD' in adv_c, "Missing robust inspection command in adversarial-review SKILL.md"
 
     # 9. Synchronization in AGENTS.md
@@ -768,10 +768,16 @@ def test_external_review_prompts_and_living_branches_contract():
     # 15. External Review Convergence Gate (Retain List Only)
     assert "External Review Convergence Gate" in mf_c, "Missing Convergence Gate in make-feature SKILL.md"
     assert "Retain List Only" in mf_c, "Missing Retain List Only in make-feature SKILL.md"
+    assert "Content-Conflict Precedence Hierarchy" in mf_c, "Missing Content-Conflict Precedence Hierarchy in make-feature SKILL.md"
+    assert "Chat Announcement Requirement" in mf_c, "Missing Chat Announcement Requirement in make-feature SKILL.md"
+    assert "Bounded Unresponsiveness Demotion" in mf_c, "Missing Bounded Unresponsiveness Demotion in make-feature SKILL.md"
     assert "External Review Convergence Gate" in adv_c, "Missing Convergence Gate in adversarial-review SKILL.md"
+    assert "Content-Conflict Precedence Hierarchy" in adv_c, "Missing Content-Conflict Precedence Hierarchy in adversarial-review SKILL.md"
     assert "External Review Convergence Gate" in agents_c, "Missing Convergence Gate in AGENTS.md"
+    assert "Content-Conflict Precedence Hierarchy" in agents_c, "Missing Content-Conflict Precedence Hierarchy in AGENTS.md"
     if os.path.exists(spec_md) and os.path.exists(plan_md):
         assert "External Review Convergence Gate" in spec_c, "Missing Convergence Gate in spec.md"
+        assert "Content-Conflict Precedence Hierarchy" in spec_c, "Missing Content-Conflict Precedence Hierarchy in spec.md"
         assert not any(re.match(r"^\d{2,4}:\s", line) for line in spec_c.splitlines()), "Corrupted line-number prefixes in spec.md"
 
 
