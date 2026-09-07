@@ -6,13 +6,14 @@
 
 ---
 
-## Active Scorecard (Round 8 Triage)
+## Active Scorecard (Round 9 Triage)
+- **Last triaged branch tip**: `8cc674c1c5f9965e70a3481415e2c6aab7b53bb9`
 
 | Reviewer ID | Speed / State | Signal Level | Key Contributions / Findings | Directive |
 |---|---|---|---|---|
-| `reviewer-18251` | Deep / Active | **HIGH SIGNAL** | Caught gate announcement & stall bound gap; required fresh AUDITED_SHA handshake | **CONTINUE** |
-| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Proved 3-dot offline diff failure in shallow clones; caught authorship audit ref check | **CONTINUE** |
-| `reviewer-3285` | Fast / Forensic | **HIGH SIGNAL** | Caught gate termination bound; reconciled content precedence vs process gate; empty-before audit | **CONTINUE** |
+| `reviewer-18251` | Deep / Active | **HIGH SIGNAL** | Caught first-ingest audit blind window (FETCH_HEAD..FETCH_HEAD empty range) | **CONTINUE** |
+| `reviewer-24562` | Deep / Verified | **HIGH SIGNAL** | Caught unset before durable persistence gap; single Nit remaining | **CONTINUE** |
+| `reviewer-3285` | Fast / Forensic | **HIGH SIGNAL** | Proved fail-open blind spot in scratch repo; caught unset before edge | **CONTINUE** |
 | 4th Agent | Terminated | **UNRESPONSIVE / STUCK** | Session hung / aborted earlier by user | **STOP** (Closed) |
 
 ---
