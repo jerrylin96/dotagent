@@ -683,5 +683,15 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "Reviewer Identification Proof" in adv_c, "Missing Reviewer Identification Proof in adversarial-review SKILL.md"
     assert "Reviewer Identification Proof" in agents_c, "Missing Reviewer Identification Proof in AGENTS.md"
 
+    # 11. Anti-Collision, Peer Isolation & Authorship Invariants
+    assert "FILE ISOLATION" in mf_c, "Missing FILE ISOLATION in make-feature SKILL.md"
+    assert "TARGETED STAGING" in mf_c, "Missing TARGETED STAGING in make-feature SKILL.md"
+    assert "ABORT ON FOREIGN CONFLICT" in mf_c, "Missing ABORT ON FOREIGN CONFLICT in make-feature SKILL.md"
+    assert "Builder Ingestion Authorship Audit" in mf_c, "Missing Builder Ingestion Authorship Audit in make-feature SKILL.md"
+    assert "TAMPERED/CLOBBERED" in mf_c, "Missing TAMPERED/CLOBBERED in make-feature SKILL.md"
+    assert "FILE ISOLATION" in adv_c, "Missing FILE ISOLATION in adversarial-review SKILL.md"
+    assert "TARGETED STAGING" in adv_c, "Missing TARGETED STAGING in adversarial-review SKILL.md"
+    assert "TAMPERED/CLOBBERED" in agents_c, "Missing TAMPERED/CLOBBERED in AGENTS.md"
+
 
 

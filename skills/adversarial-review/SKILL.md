@@ -126,6 +126,10 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - Reviewers MUST use file-level namespace isolation: write feedback exclusively to `reviews/${REVIEWER_ID}.md` (never modify shared root `review.md`).
     - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with exponential backoff and abort on conflicts.
     - Reviewers are strictly forbidden from running `push --force` on the shared branch.
+    - `FILE ISOLATION`: Reviewers own only `reviews/${REVIEWER_ID}.md` and are forbidden from editing or deleting peer files.
+    - `TARGETED STAGING`: Reviewers must run only `git add reviews/${REVIEWER_ID}.md` (never blanket `git add .` or `git add -A`).
+    - `ABORT ON FOREIGN CONFLICT`: On merge/rebase conflict outside `reviews/${REVIEWER_ID}.md`, run `git rebase --abort`.
+    - `Builder Ingestion Authorship Audit`: Builder verifies commits touch only `reviews/${REVIEWER_ID}.md`; any commit touching codebase or peer files is flagged `TAMPERED/CLOBBERED` and rejected.
 - **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
 - **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.
 - **Reviewer Signal Scorecard & Triage**:

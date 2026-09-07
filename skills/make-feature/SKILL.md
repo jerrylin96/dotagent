@@ -249,6 +249,13 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
   - File-level namespace isolation: Reviewers MUST write to `reviews/${REVIEWER_ID}.md` (never shared root `review.md`).
   - Rebase-push retry loop: `git pull --rebase origin <shared-branch>` (bounded retry with backoff, abort on conflict).
   - Reviewers are strictly forbidden from running `push --force` on the shared branch.
+  - **Anti-Collision & Peer Isolation Invariants**:
+    1. `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md`. Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/`.
+    2. `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
+    3. `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry. Never force-resolve peer files.
+  - **Builder Ingestion Authorship Audit**:
+    - When ingesting shared review branches, the builder verifies commit history (`git log --name-only`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
+    - If any commit touches, truncates, or deletes peer files or codebase files, the builder flags it as `TAMPERED/CLOBBERED`, rejects the commit, and notifies the user immediately.
 
 ### Freshness Handshake & Living Status
 - Every review document MUST include `AUDITED_SHA: <sha>` in the header to verify freshness.
