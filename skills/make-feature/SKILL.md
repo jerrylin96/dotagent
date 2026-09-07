@@ -101,7 +101,20 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
        fi
        if [ "$REMOTE_ENABLED" = true ]; then
          git push origin --delete "${BRANCH_NAME}" 2>/dev/null || true
+         # Server-truth review branch purge on abort
+         git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*" |
+         awk '{print $2}' | sed 's@^refs/heads/@@' |
+         while IFS= read -r b; do
+           [ -n "$b" ] && git push origin --delete "$b"
+         done
+         git remote prune origin >/dev/null 2>&1 || true
        fi
+       # Local review branch sweep
+       curr_b=$(git branch --show-current 2>/dev/null || true)
+       git for-each-ref --format='%(refname:short)' "refs/heads/review/${FEATURE_SLUG}/*" |
+       while IFS= read -r lb; do
+         [ -n "$lb" ] && [ "$lb" != "$curr_b" ] && git branch -D "$lb" || true
+       done
        git worktree prune
        ```
 
@@ -150,6 +163,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
      > **Sequential Subagent Delegation (Heavy Mode)**: If the approved `/plan` specifies `Sequential Subagents`, execution subagents MUST run sequentially using `Workspace: inherit` (or target worktree path) so all slice commits land on `${BRANCH_NAME}`. In Heavy Mode (`/make-feature heavy`), each task slice builder executes a strict 2-stage commit cycle:
      > 1. Write slice RED tests, trigger `Adversarial Test Reviewer` subagent, stage & commit `test(slice-N): add RED test suite (failing)`, and push to `origin` if `REMOTE_ENABLED=true`.
      > 2. Write slice GREEN implementation, confirm 100% pass, trigger slice `Adversarial Code Reviewer` subagent, stage & commit `feat(slice-N): implement slice N (GREEN)`, push to `origin` if `REMOTE_ENABLED=true`, update `scratchpad.md`, and advance to the next slice. Parent agent MUST clean up review subagents via `manage_subagents` (`Action: "kill"`). Max 3 REJECT cycles per review gate before escalating to human engineer.
+     - **Emit External Review Prompt (Heavy Mode Slice Gate)**: Immediately following push of slice RED tests or slice GREEN implementation, emit the compact external review prompt.
    - **Step 4f (Builder Pre-Review Quality Check & Manifest Creation)**:
      - Update `<appDataDir>/brain/<conversation-id>/scratch/scratchpad.md` with build step findings and empirical test logs.
      - Create review manifest artifact in ephemeral conversation directory (`<appDataDir>/brain/<conversation-id>/review_manifest_<feature>.md`).
@@ -162,7 +176,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
      git diff --cached --quiet || git commit -m "feat: implement feature to make tests pass (GREEN)"
      ```
      *(Note: In Heavy Mode, slice commits and pushes already occurred inside Step 4e tip; the `git diff --cached --quiet` guard ensures Step 5 is a clean no-op if the working tree is already clean).*
-     - **Emit External Review Prompt (GREEN Commit Gate - Phase 2 Step 5 / Phase 3 Step 6)**: When operating offline or prior to remote push, emit the compact external review prompt targeting local git diff (`git diff origin/${BASE_BRANCH}...HEAD`).
+     - **Emit External Review Prompt (GREEN Commit Gate - Phase 2 Step 5 / Phase 3 Step 6)**: When operating offline (`REMOTE_ENABLED=false`), emit the compact external review prompt targeting local git diff (`git diff ${BASE_BRANCH}...HEAD`).
 
 4. **Phase 3 (Push, Adversarial Code Review Gate & Ephemeral Folder Cleanup)**:
    - **Goal**: Feature implementation pushed to `origin`, subagent `/adversarial-review` executed, ephemeral review folder purged from git tree, and post-review report artifact created in ephemeral conversation brain.
@@ -172,7 +186,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
        git push origin "${BRANCH_NAME}"
      fi
      ```
-     - **Emit External Review Prompt (GREEN Push Gate - Phase 2 Step 5 / Phase 3 Step 6)**: Immediately following push to remote origin, emit the compact external review prompt instantiation targeting full remote diff and current commit SHA.
+     - **Emit External Review Prompt (GREEN Push Gate - Phase 2 Step 5 / Phase 3 Step 6)**: Immediately following push to remote origin, emit the compact external review prompt instantiation targeting full remote diff and current commit SHA. If remote push fails, fall back to emitting prompt targeting local diff (`git diff ${BASE_BRANCH}...HEAD`).
    - **Step 7 (Subagent Adversarial Review Loop)**:
      - *Mandatory Subagent Delegation*: The parent agent MUST NOT run the review in its own context. The parent agent MUST execute `invoke_subagent` (`TypeName: self`, `Role: Adversarial Code Reviewer`, `Workspace: inherit`).
      - *Subagent Compaction Block*: The subagent prompt MUST include a compacted context block (≤ 30 lines) formatted as:
@@ -208,8 +222,20 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
          while IFS= read -r b; do
            [ -n "$b" ] && git push origin --delete "$b"
          done
+         if ! out=$(git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*" 2>&1); then
+           echo "warning: could not verify remote cleanup: $out" >&2
+         elif [ -n "$out" ]; then
+           echo "warning: review branches remain on origin" >&2
+         fi
          git remote prune origin >/dev/null 2>&1 || true
        fi
+
+       # Local review branch cleanup (skipping current checkout)
+       curr_b=$(git branch --show-current 2>/dev/null || true)
+       git for-each-ref --format='%(refname:short)' "refs/heads/review/${FEATURE_SLUG}/*" |
+       while IFS= read -r lb; do
+         [ -n "$lb" ] && [ "$lb" != "$curr_b" ] && git branch -D "$lb" || true
+       done
        ```
      - This guarantees that upon merge or rebase to `<base_branch>`, zero ephemeral files pollute the primary tree. Note: After cleanup, the spec and plan exist only in the feature-branch commit history. In Step 8 / Phase 4, the agent presents the commit SHAs and links of the spec and plan commits to the human engineer so they can be consulted during `/explain-diff` and `/signoff` after in-tree copies are removed.
    - **Step 7c (Ephemeral Post-Review Audit Report Artifact & Scratchpad Update)**:
@@ -225,7 +251,7 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
 5. **Phase 4 (Human Signoff, PR Creation & Manual Merge)**:
    - **Goal**: Human engineer reviews post-review audit report artifact, creates Pull Request, and manually merges feature branch to target integration branch (`<base_branch>`).
    - **Step 8 (Human Review, PR Creation & Integration Gate)**: **PAUSE**. Update `<appDataDir>/brain/<conversation-id>/scratch/scratchpad.md` pre-signoff with final completion status. Present review report, diff summary, spec/plan commit SHAs, and remote feature branch link to user.
-     - **Non-Merging Verification**: Verify `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"` is completely empty. PR source MUST be `gemini/${FEATURE_SLUG}`.
+     - **Non-Merging Verification**: If `REMOTE_ENABLED=true`, verify `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"` is completely empty. PR source MUST be `gemini/${FEATURE_SLUG}`.
    - **Human Ownership of PR Creation & Integration**:
      > [!CAUTION]
      > - **Human PR & Merge Ownership**: Creating Pull Requests (PRs), reviewing PR diffs, and merging code *into* the target integration branch (`<base_branch>`, e.g., `main`, `develop`, `staging`, `release/*`, etc.) is **ALWAYS performed manually by the human engineer**. The AI agent is strictly forbidden from creating PRs or merging directly into the primary integration branch.
@@ -245,10 +271,12 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
 - **Mode A: Isolated Review Branches**: Reviewers operate on `review/${FEATURE_SLUG}/${REVIEWER_ID}` with living `review.md`.
   - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
   - Double-quote all shell expansions: `"${REVIEWER_ID}"`.
+  - Collision check: If `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/${REVIEWER_ID}"` exists, append `-2`.
 - **Mode B: Shared Sandbox Branch Mode**: When all reviewers are pinned by platform to a single shared branch (e.g. Arena.ai):
   - File-level namespace isolation: Reviewers MUST write to `reviews/${REVIEWER_ID}.md` (never shared root `review.md`).
   - Rebase-push retry loop: `git pull --rebase origin <shared-branch>` (bounded retry with backoff, abort on conflict).
   - Reviewers are strictly forbidden from running `push --force` on the shared branch.
+  - Collision check: If `[ -f "reviews/${REVIEWER_ID}.md" ]` already exists from another session, append `-2`.
   - **Anti-Collision & Peer Isolation Invariants**:
     1. `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md`. Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/`.
     2. `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
@@ -256,6 +284,8 @@ Use this skill for **all codebase changes** — features, bug fixes, config edit
   - **Builder Ingestion Authorship Audit**:
     - When ingesting shared review branches, the builder verifies commit history (`git log --name-only`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
     - If any commit touches, truncates, or deletes peer files or codebase files, the builder flags it as `TAMPERED/CLOBBERED`, rejects the commit, and notifies the user immediately.
+    - Inspect review files via `git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
+  - **Mode B Review File Lifecycle**: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
 
 ### Freshness Handshake & Living Status
 - Every review document MUST include `AUDITED_SHA: <sha>` in the header to verify freshness.

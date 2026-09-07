@@ -56,8 +56,9 @@
       - Untrusted input defense rule.
       - Fallback ingestion at `scratch/external_reviews/<REVIEWER_ID>.md`.
   - Update `adversarial-review/SKILL.md`:
-    - Add dispatch rule: standalone chat mode vs post-push living branch mode.
     - Document canonical external review prompt templates, grammar, and triage scorecard.
+    - Add Masked Reviewer Identity Proof & Session Persistence protocol (`Reviewer Identification Proof`, `Session Continuity Directive`).
+    - Add Anti-Collision & Peer Isolation invariants (`FILE ISOLATION`, `TARGETED STAGING`, `ABORT ON FOREIGN CONFLICT`, `Builder Ingestion Authorship Audit` rejecting `TAMPERED/CLOBBERED`).
   - Verify `.gitignore` includes `scratch/`.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`

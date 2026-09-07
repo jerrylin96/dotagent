@@ -650,16 +650,18 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "PR source MUST be `gemini/${FEATURE_SLUG}`" in mf_c, "Missing PR source requirement in make-feature SKILL.md"
     assert "never executes unverified" in mf_c, "Missing untrusted input defense in make-feature SKILL.md"
     assert "scratch/external_reviews/" in mf_c, "Missing fallback ingestion path in make-feature SKILL.md"
+    assert 'git branch -D "$lb"' in mf_c, "Missing local review branch cleanup loop in make-feature SKILL.md"
+    assert "could not verify remote cleanup" in mf_c, "Missing post-delete verification warning in make-feature SKILL.md"
+    assert 'git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"' in mf_c, "Missing builder inspection command in make-feature SKILL.md"
 
-    # 6. Scoped emission anchors across all milestone steps
-    assert "Step 2" in mf_c and "spec:" in mf_c, "Missing Step 2 spec emission anchor"
-    assert "Step 2b" in mf_c, "Missing Step 2b spec revision emission anchor"
-    assert "Step 3" in mf_c and "plan:" in mf_c, "Missing Step 3 plan emission anchor"
-    assert "Step 3b" in mf_c, "Missing Step 3b plan revision emission anchor"
-    assert "Step 4d" in mf_c and "RED test" in mf_c, "Missing Step 4d RED test emission anchor"
-    assert "Step 5" in mf_c and "GREEN" in mf_c, "Missing Step 5 GREEN commit emission anchor"
-    assert "Step 6" in mf_c, "Missing Step 6 GREEN push emission anchor"
-    assert "Heavy Mode" in mf_c and "slice" in mf_c, "Missing Heavy Mode per-slice emission anchor"
+    # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
+    assert "Emit External Review Prompt (Spec Gate)" in mf_c, "Missing Spec Gate emission anchor"
+    assert "Emit External Review Prompt (Plan Gate)" in mf_c, "Missing Plan Gate emission anchor"
+    assert "Emit External Review Prompt (RED Test Gate)" in mf_c, "Missing RED Test Gate emission anchor"
+    assert "Emit External Review Prompt (Heavy Mode Slice Gate)" in mf_c, "Missing Heavy Mode Slice Gate emission anchor"
+    assert "Emit External Review Prompt (GREEN Commit Gate" in mf_c, "Missing GREEN Commit Gate emission anchor"
+    assert "Emit External Review Prompt (GREEN Push Gate" in mf_c, "Missing GREEN Push Gate emission anchor"
+    assert "git diff ${BASE_BRANCH}...HEAD" in mf_c, "Missing local-safe offline git diff command in make-feature SKILL.md"
 
     # 7. Cleanup ordering assertion (purge appears after APPROVE in Step 7b)
     approve_idx = mf_c.find("Adversarial Code Reviewer")
@@ -672,6 +674,9 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "Mode B: Shared Sandbox Branch Mode" in adv_c, "Missing Mode B in adversarial-review SKILL.md"
     assert "Reviewer Signal Scorecard" in adv_c, "Missing Reviewer Signal Scorecard in adversarial-review SKILL.md"
     assert "External PR Action Plan" in adv_c, "Standalone External PR Action Plan must remain intact in adversarial-review SKILL.md"
+    assert "Canonical External Review Prompt Template" in adv_c, "Missing Canonical External Review Prompt Template in adversarial-review SKILL.md"
+    assert "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" in adv_c, "Missing grammar regex in adversarial-review SKILL.md"
+    assert 'git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"' in adv_c, "Missing inspection command in adversarial-review SKILL.md"
 
     # 9. Synchronization in AGENTS.md
     assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
@@ -692,6 +697,18 @@ def test_external_review_prompts_and_living_branches_contract():
     assert "FILE ISOLATION" in adv_c, "Missing FILE ISOLATION in adversarial-review SKILL.md"
     assert "TARGETED STAGING" in adv_c, "Missing TARGETED STAGING in adversarial-review SKILL.md"
     assert "TAMPERED/CLOBBERED" in agents_c, "Missing TAMPERED/CLOBBERED in AGENTS.md"
+
+    # 12. Spec and Plan parity for Identity Proof and Peer Isolation
+    spec_md = os.path.join(root_dir, "external-review-prompts-50ee34/spec.md")
+    plan_md = os.path.join(root_dir, "external-review-prompts-50ee34/plan.md")
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        with open(spec_md, "r", encoding="utf-8") as f:
+            spec_c = f.read()
+        with open(plan_md, "r", encoding="utf-8") as f:
+            plan_c = f.read()
+        assert "Reviewer Identification Proof" in spec_c, "Missing Identity Proof in spec.md"
+        assert "FILE ISOLATION" in spec_c, "Missing FILE ISOLATION in spec.md"
+        assert "Reviewer Identification Proof" in plan_c, "Missing Identity Proof in plan.md"
 
 
 

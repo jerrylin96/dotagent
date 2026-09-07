@@ -96,6 +96,26 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
   4. Mode A vs Mode B branching instructions.
   5. Fallback ingestion: User-saved file at `scratch/external_reviews/<REVIEWER_ID>.md` (ensuring `scratch/` is in `.gitignore`, viewed via `view_file`).
 
+### 3.3b Masked Reviewer Identity Proof & Peer Isolation Invariants
+1. **Masked Identity Proof Banner**:
+   - Every prompt mandates that the external reviewer print a visible `Reviewer Identification Proof` banner at the very top of their chat text (outside tool calls):
+     ```text
+     ### 🪪 Reviewer Identification Proof
+     - Reviewer ID: reviewer-<id>
+     - Target SHA Audited: <commit-sha>
+     - Review File: reviews/reviewer-<id>.md
+     - Push Commit SHA: <push-sha>
+     ```
+   - **Session Continuity Directive**: On subsequent milestone turns (Spec -> Plan -> Test -> Code), prompts mandate: `If you already established your REVIEWER_ID in an earlier turn of this chat session, YOU MUST REUSE IT. Do NOT generate a new random ID.`
+2. **Anti-Collision & Peer Isolation Invariants**:
+   - `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md`. Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/` or codebase.
+   - `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
+   - `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry.
+3. **Builder Ingestion Authorship Audit**:
+   - When pulling shared review branches, the builder verifies commit history (`git log --name-only`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
+   - Any commit touching codebase files, spec/plan, or peer files is flagged as `TAMPERED/CLOBBERED` and rejected.
+   - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
+
 ### 3.4 Autonomous Triage & Reviewer Signal Scorecard
 When external reviews are ingested:
 1. **Precedence Hierarchy**:

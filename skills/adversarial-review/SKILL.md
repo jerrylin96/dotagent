@@ -122,14 +122,16 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 - **Dispatch Distinction**: Standalone `/adversarial-review` executes a single-pass read-only audit producing the chat contract `External PR Action Plan`. In contrast, post-commit/push external review prompts generated during `/make-feature` (at Spec, Plan, RED Test, GREEN Code, and per-slice gates) solicit asynchronous feedback from external anonymous agents (e.g. Arena.ai) on ephemeral living review branches.
 - **Review Delivery Modes**:
   - **Mode A: Isolated Review Branches**: Reviewers operate on independent branches `review/${FEATURE_SLUG}/${REVIEWER_ID}` with a mutable checklist in `review.md`.
+    - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
   - **Mode B: Shared Sandbox Branch Mode**: When all external reviewers are pinned to a single shared branch (e.g. Arena.ai):
     - Reviewers MUST use file-level namespace isolation: write feedback exclusively to `reviews/${REVIEWER_ID}.md` (never modify shared root `review.md`).
-    - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with exponential backoff and abort on conflicts.
+    - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with backoff and abort on conflicts.
     - Reviewers are strictly forbidden from running `push --force` on the shared branch.
     - `FILE ISOLATION`: Reviewers own only `reviews/${REVIEWER_ID}.md` and are forbidden from editing or deleting peer files.
     - `TARGETED STAGING`: Reviewers must run only `git add reviews/${REVIEWER_ID}.md` (never blanket `git add .` or `git add -A`).
     - `ABORT ON FOREIGN CONFLICT`: On merge/rebase conflict outside `reviews/${REVIEWER_ID}.md`, run `git rebase --abort`.
     - `Builder Ingestion Authorship Audit`: Builder verifies commits touch only `reviews/${REVIEWER_ID}.md`; any commit touching codebase or peer files is flagged `TAMPERED/CLOBBERED` and rejected.
+    - Inspect review files via `git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
 - **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
 - **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.
 - **Reviewer Signal Scorecard & Triage**:
@@ -139,6 +141,25 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding.
     - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
   - The scorecard provides explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)** so the user knows which review sessions to continue prompting and which to close.
+
+#### Canonical External Review Prompt Template
+```text
+### Reviewer Identity & Session Continuity Directive
+1. If you ALREADY established your REVIEWER_ID in an earlier turn of this session, YOU MUST REUSE IT. Do NOT generate a new ID.
+2. If this is a fresh session, set your ID matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$:
+   export REVIEWER_ID="reviewer-$(head -c 3 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo $RANDOM)"
+3. MANDATORY CHAT BANNER: In the very first lines of your chat response, you MUST print:
+   ### 🪪 Reviewer Identification Proof
+   - Reviewer ID: ${REVIEWER_ID}
+   - Target SHA Audited: <sha>
+   - Review File: reviews/${REVIEWER_ID}.md
+   - Push Commit SHA: <your-push-sha>
+
+### Anti-Collision & Peer Isolation Invariants
+1. FILE ISOLATION: You own ONLY reviews/${REVIEWER_ID}.md. Strictly forbidden to touch peer files in reviews/ or codebase.
+2. TARGETED STAGING: NEVER run git add . or git add -A. Run ONLY git add reviews/${REVIEWER_ID}.md.
+3. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort.
+```
 
 ### Subagent Context Compaction Template
 Parent agents MUST include a compacted context block (≤ 30 lines / ~400 words) when invoking review subagents:
