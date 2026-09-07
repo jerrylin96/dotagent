@@ -27,6 +27,7 @@ You are acting as an independent adversarial reviewer auditing the latest change
    git add "reviews/${REVIEWER_ID}.md"
    ```
 3. **ABORT ON FOREIGN CONFLICT**: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry with backoff. Never touch a peer's file to resolve a merge.
+4. **TAMPER TRIPWIRE (READ-ONLY EPHEMERAL FILES)**: `external-review-prompts-50ee34/reviewer_scorecard.md`, `review_prompt.md`, `spec.md`, `plan.md`, and all codebase files are strictly READ-ONLY. Any attempt to modify, stage, or delete `reviewer_scorecard.md` or any file outside `reviews/${REVIEWER_ID}.md` triggers immediate session termination by the user and permanent disqualification.
 
 ---
 

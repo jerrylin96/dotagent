@@ -731,6 +731,19 @@ def test_external_review_prompts_and_living_branches_contract():
         assert "review_prompt.md" in spec_c, "Missing review_prompt.md in spec.md"
         assert "review_prompt.md" in plan_c, "Missing review_prompt.md in plan.md"
 
+    # 14. In-Tree Ephemeral Scorecard Protocol & Tamper Tripwire (reviewer_scorecard.md)
+    assert "reviewer_scorecard.md" in mf_c, "Missing reviewer_scorecard.md in make-feature SKILL.md"
+    assert "Tamper Tripwire" in mf_c, "Missing Tamper Tripwire in make-feature SKILL.md"
+    assert "reviewer_scorecard.md" in adv_c, "Missing reviewer_scorecard.md in adversarial-review SKILL.md"
+    assert "TAMPER TRIPWIRE" in adv_c, "Missing TAMPER TRIPWIRE in adversarial-review SKILL.md"
+    assert "reviewer_scorecard.md" in agents_c, "Missing reviewer_scorecard.md in AGENTS.md"
+    assert "Tamper Tripwire" in agents_c, "Missing Tamper Tripwire in AGENTS.md"
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        assert "reviewer_scorecard.md" in spec_c, "Missing reviewer_scorecard.md in spec.md"
+        assert "Tamper Tripwire" in spec_c, "Missing Tamper Tripwire in spec.md"
+        assert "reviewer_scorecard.md" in plan_c, "Missing reviewer_scorecard.md in plan.md"
+
+
 
 
 

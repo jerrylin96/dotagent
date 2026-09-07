@@ -131,7 +131,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `FILE ISOLATION`: Reviewers own only `reviews/${REVIEWER_ID}.md` and are forbidden from editing or deleting peer files.
     - `TARGETED STAGING`: Reviewers must run only `git add reviews/${REVIEWER_ID}.md` (never blanket `git add .` or `git add -A`).
     - `ABORT ON FOREIGN CONFLICT`: On merge/rebase conflict outside `reviews/${REVIEWER_ID}.md`, run `git rebase --abort`.
-    - `Builder Ingestion Authorship Audit`: Builder verifies commits on shared branch (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`) touch only `reviews/${REVIEWER_ID}.md`; any commit touching codebase or peer files is flagged `TAMPERED/CLOBBERED` and rejected.
+    - `Builder Ingestion Authorship Audit & Tamper Tripwire`: Builder verifies commits on shared branch (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`) touch only `reviews/${REVIEWER_ID}.md`. If any commit touches `reviewer_scorecard.md`, other ephemeral files, or codebase files, it is flagged `TAMPERED/CLOBBERED`, the builder immediately alerts the user to terminate that agent's session, moves it to the `Drop List`, and rejects the commit.
     - Inspect review files via `git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
 - **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
 - **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.
@@ -142,7 +142,8 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
     - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding.
     - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
   - The scorecard provides explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)** so the user knows which review sessions to continue prompting and which to close.
-- **In-Tree Ephemeral Review Prompt File (`review_prompt.md`)**: To eliminate conversation context bloat, prompt instantiations are saved to in-tree file `${FEATURE_SLUG}/review_prompt.md` (committed and pushed with the milestone). Chat emits only the ultra-compact 2-line dispatch command (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`). Automatically purged at Step 7b.
+  - **Tamper Tripwire & Termination Directive**: If any external agent modifies `reviewer_scorecard.md` or any file outside `reviews/${REVIEWER_ID}.md`, the builder immediately alerts the user to terminate that agent's session and adds it to the `Drop List`.
+- **In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)**: To eliminate conversation context bloat, prompt instantiations and living scorecards are saved to in-tree files `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (committed and pushed with the milestone). Chat emits only the ultra-compact 2-line dispatch command (`git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md`) and scorecard pointer (`cat ${FEATURE_SLUG}/reviewer_scorecard.md`). Automatically purged at Step 7b.
 
 #### Canonical External Review Prompt Template
 ```text
@@ -161,6 +162,7 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 1. FILE ISOLATION: You own ONLY reviews/${REVIEWER_ID}.md. Strictly forbidden to touch peer files in reviews/ or codebase.
 2. TARGETED STAGING: NEVER run git add . or git add -A. Run ONLY git add reviews/${REVIEWER_ID}.md.
 3. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort. If retries exhausted, fall back to chat markdown.
+4. TAMPER TRIPWIRE (READ-ONLY EPHEMERAL FILES): ${FEATURE_SLUG}/reviewer_scorecard.md, review_prompt.md, spec, plan, and codebase files are strictly READ-ONLY. Modifying, staging, or deleting reviewer_scorecard.md or any file outside reviews/${REVIEWER_ID}.md triggers immediate session termination by the user and disqualification.
 ```
 
 ### Subagent Context Compaction Template

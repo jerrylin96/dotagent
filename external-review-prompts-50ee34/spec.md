@@ -112,20 +112,23 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
    - `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md`. Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/` or codebase.
    - `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
    - `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry.
-3. **Builder Ingestion Authorship Audit**:
+3. **Builder Ingestion Authorship Audit & Tamper Tripwire**:
    - When pulling shared review branches, the builder verifies commit history scoped to branch commits (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
-   - Any commit touching codebase files, spec/plan, or peer files is flagged as `TAMPERED/CLOBBERED` and rejected.
+   - Any commit touching codebase files, spec/plan, `reviewer_scorecard.md`, or peer files is flagged as `TAMPERED/CLOBBERED` and rejected.
+   - If any reviewer commits changes to `reviewer_scorecard.md` or any unauthorized file, the builder immediately alerts the user with an urgent directive to **TERMINATE / DROP** that reviewer's session.
    - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
 
-### 3.3c In-Tree Ephemeral Review Prompt Protocol (`review_prompt.md`)
+### 3.3c In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)
 To eliminate conversational token bloat and prevent massive prompts from cluttering chat history:
 1. **In-Tree Persistence**: At each milestone gate (Spec, Plan, RED Test, GREEN Commit/Push, Heavy Mode slices), the builder writes the complete review prompt to `${WORKTREE_PATH}/${FEATURE_SLUG}/review_prompt.md`.
-2. **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` is committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
-3. **Ultra-Compact Chat Dispatch Pointer**: In chat, the builder outputs only a minimal 2-line trigger for the user to copy-paste:
+2. **Living In-Tree Scorecard**: During each triage round, the builder updates `${WORKTREE_PATH}/${FEATURE_SLUG}/reviewer_scorecard.md` with living ratings, signal levels, and `Retain List` / `Drop List` directives.
+3. **Atomic Push with Milestone**: `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` are committed and pushed alongside `spec.md`, `plan.md`, test files, or code.
+4. **Ultra-Compact Chat Dispatch Pointer**: In chat, the builder outputs only a minimal 2-line trigger for the user to copy-paste:
    ```bash
    git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md
    ```
-4. **Automatic Ephemeral Purge**: Because `review_prompt.md` resides in `${FEATURE_SLUG}/`, Step 7b's standard cleanup (`git rm -rf --ignore-unmatch "${FEATURE_SLUG}"`) automatically purges it before merge. Zero leftover prompt files pollute the target integration branch.
+5. **Tamper Tripwire & Termination Protocol**: `${FEATURE_SLUG}/reviewer_scorecard.md`, `review_prompt.md`, spec, plan, and codebase files are strictly read-only for external agents. If builder authorship audit detects any unauthorized edit to `reviewer_scorecard.md` or files outside `reviews/${REVIEWER_ID}.md`, the builder immediately alerts the user to terminate that agent's session, moves the agent to the `Drop List`, and rejects the commit.
+6. **Automatic Ephemeral Purge**: Because `review_prompt.md` and `reviewer_scorecard.md` reside in `${FEATURE_SLUG}/`, Step 7b's standard cleanup (`git rm -rf --ignore-unmatch "${FEATURE_SLUG}"`) automatically purges them before merge. Zero leftover prompt files pollute the target integration branch.
 
 ### 3.4 Autonomous Triage & Reviewer Signal Scorecard
 When external reviews are ingested:
@@ -143,6 +146,7 @@ When external reviews are ingested:
    The scorecard MUST culminate in explicit user action directives:
    - **Retain List (`CONTINUE`)**: Explicit list of reviewer sessions the user should continue prompting at the next milestone gate.
    - **Drop List (`STOP`)**: Explicit list of reviewer sessions the user should stop prompting or close, preventing wasted copy-paste overhead on unproductive agents.
+   - **Tamper Tripwire Termination**: Instant termination alert for agents attempting to modify `reviewer_scorecard.md`.
 
 ### 3.5 Automated Ephemeral Cleanup (Server-Enumerated Truth)
 1. **Step 7b & Step 8 Purge Snippet**:

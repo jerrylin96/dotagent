@@ -89,3 +89,19 @@
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> ruff check .`
 
+### Task 5: Implement In-Tree Ephemeral Scorecard (`reviewer_scorecard.md`) & Tamper Tripwire
+- **Files**:
+  - `skills/make-feature/SKILL.md`
+  - `skills/adversarial-review/SKILL.md`
+  - `AGENTS.md`
+  - `external-review-prompts-50ee34/reviewer_scorecard.md`
+  - `scripts/tests/test_skill_references.py`
+- **GREEN Implementation Target**:
+  - Assert `reviewer_scorecard.md` and Tamper Tripwire presence across all skills, guides, and tests.
+  - Create in-tree `external-review-prompts-50ee34/reviewer_scorecard.md` with Round 3 scorecard ratings and Retain/Drop lists.
+  - Assert that tampering with `reviewer_scorecard.md` triggers immediate user termination alert and agent disqualification.
+- **Verify Command**:
+  `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
+  `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> ruff check .`
+
+
