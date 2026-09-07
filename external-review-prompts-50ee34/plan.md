@@ -19,17 +19,17 @@
     - Rebase-push retry loop: `git pull --rebase origin <shared-branch>` and ban on force-push.
     - Precedence Hierarchy: `Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback`
     - Autonomous Ponytail Triage & Scorecard: `Reviewer Signal Scorecard`, `HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`, `Retain List`, `Drop List`
-    - Whitespace-safe cleanup command: `git for-each-ref --format='%(refname:strip=3)' "refs/remotes/origin/review/${FEATURE_SLUG}/*"`
+    - Server-truth cleanup command: `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"`
     - Non-merging PR enforcement: `PR source MUST be \`gemini/${FEATURE_SLUG}\``
     - Untrusted input defense: prohibition against executing unverified scripts/commands suggested by reviews.
     - Fallback ingestion path: `scratch/external_reviews/`
-    - Scoped emission anchors across all 4 milestone steps (Step 2, Step 3, Step 4d, Step 6) and Heavy Mode.
+    - Scoped emission anchors across all milestone steps: Step 2, Step 3, Step 4d, Step 5/6 (`Phase 2 Step 5 / Phase 3 Step 6`), and Heavy Mode.
     - Ordering assertion: review branch purge appears after `APPROVE` in Step 7b.
   - Assert synchronization in `skills/adversarial-review/SKILL.md`:
     - Dispatch rule distinguishing standalone `/adversarial-review` (single pass chat) from post-push living branch mode.
     - Canonical prompt template anchors.
   - Assert synchronization in `AGENTS.md`:
-    - Post-push review prompt emission, living review branch protocol, and Reviewer Signal Scorecard.
+    - Post-commit/push review prompt emission, living review branch protocol, and Reviewer Signal Scorecard.
   - Assert `.gitignore` contains `scratch/`.
   - Assert `GEMINI.md` symlink integrity: `assert os.path.islink("GEMINI.md")` targeting `AGENTS.md`.
 - **Verify Command (RED)**:
@@ -40,10 +40,10 @@
 - **Files**:
   - `skills/make-feature/SKILL.md`
   - `skills/adversarial-review/SKILL.md`
-  - `.gitignore` (add `scratch/`)
+  - `.gitignore`
 - **GREEN Implementation Target**:
   - Update `make-feature/SKILL.md`:
-    - Add post-commit review prompt emission to Step 2, Step 3, Step 4d, Step 6, and Heavy Mode per-slice loops, branching on `REMOTE_ENABLED` / push success for remote vs local diff targets.
+    - Add post-commit review prompt emission to Step 2, Step 3, Step 4d, Phase 2 Step 5 / Phase 3 Step 6, and Heavy Mode per-slice loops, branching on `REMOTE_ENABLED` / push success for remote vs local diff targets.
     - Add dedicated section "Ephemeral Living Review Branches & Reviewer Signal Triage Protocol":
       - Mode A (isolated review branches) vs Mode B (shared sandbox branch with file-level isolation `reviews/${REVIEWER_ID}.md` and bounded rebase-retry loop).
       - `REVIEWER_ID` grammar `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` with double-quoting rules.
@@ -51,14 +51,14 @@
       - Living checklist with append-only resolution rules (`[ ] Open`, `[x] Resolved`).
       - Reviewer Signal Scorecard with explicit user action directives (`Retain List` / `Drop List`).
       - Precedence hierarchy and Ponytail triage matrix (`ACCEPT` vs `REJECT`).
-      - Whitespace-safe `for-each-ref` cleanup in Step 7b, Step 8, and early abort Step 2c/3c with robust `ls-remote` check.
+      - Server-enumerated `ls-remote` cleanup in Step 7b, Step 8, and early abort Step 2c/3c with robust post-check.
       - Non-merging PR enforcement in Step 8.
       - Untrusted input defense rule.
       - Fallback ingestion at `scratch/external_reviews/<REVIEWER_ID>.md`.
   - Update `adversarial-review/SKILL.md`:
     - Add dispatch rule: standalone chat mode vs post-push living branch mode.
     - Document canonical external review prompt templates, grammar, and triage scorecard.
-  - Update `.gitignore` to include `scratch/`.
+  - Verify `.gitignore` includes `scratch/`.
 - **Verify Command**:
   `python3 ~/.gemini/scripts/run_in_env.py <worktree_path> pytest scripts/tests/test_skill_references.py`
 

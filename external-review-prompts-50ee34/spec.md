@@ -5,12 +5,12 @@ During the `/make-feature` lifecycle (and standalone adversarial reviews), the a
 
 Currently:
 1. **Context Bloat**: Users running independent external review agents (e.g., Claude, ChatGPT, Cursor, Arena.ai bots) paste multi-page conversational reviews into the active chat session. Once addressed, this verbose text persists indefinitely in the append-only chat history, degrading context window quality.
-2. **Review Noise, YAGNI Violations & Variable Model Quality**: Anonymous external agents vary wildly in capability. Weak models hallucinate, get stuck in git conflicts, or propose speculative abstractions that violate the **Ponytail (Lazy Senior Dev Mode)** principle. Strong models catch subtle P0 bugs and security risks. There is no protocol to visibly rank high-signal vs unhelpful reviewers.
+2. **Review Noise, YAGNI Violations & Variable Model Quality**: Anonymous external agents vary wildly in capability. Weak models hallucinate, get stuck in git conflicts, or propose speculative abstractions that violate the **Ponytail (Lazy Senior Dev Mode)** principle. Strong models catch subtle P0 bugs, stale tracking ref defects, and security risks. There is no protocol to visibly rank high-signal vs unhelpful reviewers.
 3. **Loss of Iterative Living State**: In append-only chat, earlier rounds of feedback persist alongside later revisions. There is no mutable state document tracking which review items are still open versus resolved across iterations.
 4. **Manual Overhead**: Users must manually formulate prompts containing branch names, diff ranges, review lenses, and output formatting rules after every push.
 
 ## 2. Goals & Non-Negotiables
-- **Post-Commit / Post-Push Prompt Generation**: Automatically emit a tailored, copy-pasteable review prompt immediately after every milestone commit & push (`spec`, `plan`, `test: add RED test suite`, `feat: implement GREEN code`, and per-slice pushes in Heavy Mode). If push fails or origin is absent, cleanly switch to local diff mode.
+- **Post-Commit / Post-Push Prompt Generation**: Automatically emit a tailored, copy-pasteable review prompt immediately after every milestone commit & push (`spec`, `plan`, `test: add RED test suite`, `feat: implement GREEN code` at Step 5/6, and per-slice pushes in Heavy Mode). If push fails or origin is absent, cleanly switch to local diff mode.
 - **Dual Delivery Modes (Mode A & Mode B)**:
   - **Mode A (Isolated Branches)**: When reviewers have branch-creation permissions, each operates on `review/${FEATURE_SLUG}/${REVIEWER_ID}` writing `review.md`.
   - **Mode B (Shared Sandbox Branch Mode, e.g. Arena.ai)**: When restricted to a shared branch (e.g. `arena/<session>-<repo>`), every reviewer MUST write to a dedicated file `reviews/${REVIEWER_ID}.md` (never shared root `review.md`) and push using a bounded rebase-retry loop.
@@ -26,17 +26,17 @@ Currently:
   - The builder agent autonomously evaluates external findings against the Ponytail Senior Dev ladder (`ACCEPT` vs `REJECT` with 1-line rationale).
   - The agent outputs an explicit **Reviewer Signal Scorecard** rating each reviewer (`HIGH SIGNAL`, `LOW SIGNAL / NOISE`, `UNRESPONSIVE / STUCK`).
   - The scorecard concludes with explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)**.
-- **Automated Ephemeral Cleanup**:
-  - In Phase 3 Step 7b (and Step 8 pre-signoff re-check, and Step 2c/3c early abort), all remote `review/${FEATURE_SLUG}/*` branches and local review branches are completely pruned.
+- **Server-Enumerated Automated Ephemeral Cleanup**:
+  - In Phase 3 Step 7b (and Step 8 pre-signoff re-check, and Step 2c/3c early abort), review branches are enumerated from server truth (`git ls-remote`) rather than stale local tracking cache and deleted with post-delete verification.
 
 ## 3. Detailed Workflow & Protocols
 
 ### 3.1 Milestone Emission Triggers
 Emit the external review prompt immediately following each milestone *commit*, switching target between remote branch (if pushed successfully) and local diff inspection (if push failed or repository is offline):
-1. Phase 1a Step 2 / 2b: Spec push (`spec: add initial feature spec...`).
-2. Phase 1b Step 3 / 3b: Plan push (`plan: add implementation plan...`).
-3. Phase 2 Step 4d: RED test push (`test: add RED test suite (failing)`).
-4. Phase 2 Step 5 / Phase 3 Step 6: GREEN code push (`feat: implement feature...`).
+1. Phase 1a Step 2 / 2b: Spec commit & push (`spec: add initial feature spec...`).
+2. Phase 1b Step 3 / 3b: Plan commit & push (`plan: add implementation plan...`).
+3. Phase 2 Step 4d: RED test commit & push (`test: add RED test suite (failing)`).
+4. Phase 2 Step 5 / Phase 3 Step 6: GREEN code commit (Step 5) & push (Step 6) (`feat: implement feature...`).
 5. Heavy Mode: After each slice RED test push and each slice GREEN code push.
 
 ### 3.2 Review Delivery Modes: Isolated vs. Shared Branch
@@ -94,7 +94,7 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
   2. Latest Commit SHA: `<sha>`
   3. Milestone target: in-tree spec, plan, test files, or diff.
   4. Mode A vs Mode B branching instructions.
-  5. Fallback ingestion: User-saved file at `scratch/external_reviews/<REVIEWER_ID>.md` (ensuring `scratch/` is in `.gitignore`).
+  5. Fallback ingestion: User-saved file at `scratch/external_reviews/<REVIEWER_ID>.md` (ensuring `scratch/` is in `.gitignore`, viewed via `view_file`).
 
 ### 3.4 Autonomous Triage & Reviewer Signal Scorecard
 When external reviews are ingested:
@@ -113,21 +113,25 @@ When external reviews are ingested:
    - **Retain List (`CONTINUE`)**: Explicit list of reviewer sessions the user should continue prompting at the next milestone gate.
    - **Drop List (`STOP`)**: Explicit list of reviewer sessions the user should stop prompting or close, preventing wasted copy-paste overhead on unproductive agents.
 
-### 3.5 Automated Ephemeral Cleanup
+### 3.5 Automated Ephemeral Cleanup (Server-Enumerated Truth)
 1. **Step 7b & Step 8 Purge Snippet**:
    ```bash
    if [ "$REMOTE_ENABLED" = true ]; then
-     git fetch origin --prune >/dev/null 2>&1 || true
-     git for-each-ref --format='%(refname:strip=3)' \
-       "refs/remotes/origin/review/${FEATURE_SLUG}/*" |
+     # Pre-purge: verify open items are triaged
+     git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*" |
+     awk '{print $2}' | sed 's@^refs/heads/@@' |
      while IFS= read -r b; do
-       [ -n "$b" ] && git push origin --delete "$b" 2>/dev/null || true
+       if [ -n "$b" ]; then
+         git push origin --delete "$b"
+       fi
      done
-     if ! out=$(git ls-remote origin "refs/heads/review/${FEATURE_SLUG}/*" 2>&1); then
+     # Post-delete server truth verification
+     if ! out=$(git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*" 2>&1); then
        echo "warning: could not verify remote cleanup: $out" >&2
      elif [ -n "$out" ]; then
-       echo "warning: review branches remain" >&2
+       echo "warning: review branches remain on origin" >&2
      fi
+     git remote prune origin >/dev/null 2>&1 || true
    fi
    # Local review branch cleanup (skipping current checkout)
    curr_b=$(git branch --show-current 2>/dev/null || true)
@@ -141,7 +145,7 @@ When external reviews are ingested:
    No review refs or files remain reachable after merge; orphaned objects expire via remote GC.
 2. **Early Abort Cleanup**: If human aborts at Step 2c or 3c, execute the exact same review branch purge snippet.
 3. **Step 8 Non-Merging Verification**:
-   - Verify `git branch -r --list "origin/review/${FEATURE_SLUG}/*"` is completely empty.
+   - Verify `git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"` is completely empty.
    - Enforce PR source branch MUST be `gemini/${FEATURE_SLUG}`.
 
 ### 3.6 Edge Cases & Untrusted Input Defenses
