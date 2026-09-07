@@ -22,12 +22,13 @@ You are acting as an independent adversarial reviewer auditing the latest change
 
 #### Anti-Collision & Peer Isolation Invariants
 1. **FILE ISOLATION**: You own ONLY `reviews/${REVIEWER_ID}.md`. It is STRICTLY FORBIDDEN to read, edit, stage, rename, or delete any other file in `reviews/` or anywhere else in the repository.
-2. **TARGETED STAGING**: NEVER run `git add .` or `git add -A`. Run ONLY:
+2. **BRANCH ISOLATION**: You are authorized to push ONLY to `arena/01a07d1f-dotgemini`. Never push to `main`, `gemini/external-review-prompts-50ee34`, or any other branch. Never force-push.
+3. **TARGETED STAGING**: NEVER run `git add .` or `git add -A`. Run ONLY:
    ```bash
    git add "reviews/${REVIEWER_ID}.md"
    ```
-3. **ABORT ON FOREIGN CONFLICT**: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry with backoff. Never touch a peer's file to resolve a merge.
-4. **TAMPER TRIPWIRE (READ-ONLY EPHEMERAL FILES)**: `external-review-prompts-50ee34/reviewer_scorecard.md`, `review_prompt.md`, `spec.md`, `plan.md`, and all codebase files are strictly READ-ONLY. Any attempt to modify, stage, or delete `reviewer_scorecard.md` or any file outside `reviews/${REVIEWER_ID}.md` triggers immediate session termination by the user and permanent disqualification.
+4. **ABORT ON FOREIGN CONFLICT**: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry with backoff. Never touch a peer's file to resolve a merge.
+5. **UNIVERSAL TAMPER TRIPWIRE**: All files outside `reviews/${REVIEWER_ID}.md` (including `reviewer_scorecard.md`, `review_prompt.md`, `spec.md`, `plan.md`, and all codebase files) and all branches outside `arena/01a07d1f-dotgemini` are strictly READ-ONLY / UNTOUCHABLE. Any attempt to modify unauthorized files or push to unauthorized branches triggers immediate session termination by the user and permanent disqualification.
 
 ---
 

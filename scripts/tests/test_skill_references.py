@@ -734,8 +734,10 @@ def test_external_review_prompts_and_living_branches_contract():
     # 14. In-Tree Ephemeral Scorecard Protocol & Tamper Tripwire (reviewer_scorecard.md)
     assert "reviewer_scorecard.md" in mf_c, "Missing reviewer_scorecard.md in make-feature SKILL.md"
     assert "Tamper Tripwire" in mf_c, "Missing Tamper Tripwire in make-feature SKILL.md"
+    assert "BRANCH ISOLATION" in mf_c, "Missing BRANCH ISOLATION in make-feature SKILL.md"
     assert "reviewer_scorecard.md" in adv_c, "Missing reviewer_scorecard.md in adversarial-review SKILL.md"
-    assert "TAMPER TRIPWIRE" in adv_c, "Missing TAMPER TRIPWIRE in adversarial-review SKILL.md"
+    assert "BRANCH ISOLATION" in adv_c, "Missing BRANCH ISOLATION in adversarial-review SKILL.md"
+    assert "UNIVERSAL TAMPER TRIPWIRE" in adv_c, "Missing UNIVERSAL TAMPER TRIPWIRE in adversarial-review SKILL.md"
     assert "reviewer_scorecard.md" in agents_c, "Missing reviewer_scorecard.md in AGENTS.md"
     assert "Tamper Tripwire" in agents_c, "Missing Tamper Tripwire in AGENTS.md"
     if os.path.exists(spec_md) and os.path.exists(plan_md):

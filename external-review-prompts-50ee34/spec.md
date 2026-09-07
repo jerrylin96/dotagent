@@ -109,13 +109,14 @@ To avoid conversational bloat, the canonical prompt templates and dispatch rules
      ```
    - **Session Continuity Directive**: On subsequent milestone turns (Spec -> Plan -> Test -> Code), prompts mandate: `If you already established your REVIEWER_ID in an earlier turn of this chat session, YOU MUST REUSE IT. Do NOT generate a new random ID.`
 2. **Anti-Collision & Peer Isolation Invariants**:
-   - `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md`. Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/` or codebase.
-   - `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md`. Running `git add .` or `git add -A` is strictly prohibited.
+   - `FILE ISOLATION`: Reviewers own ONLY `reviews/${REVIEWER_ID}.md` (Mode B) or `review.md` (Mode A). Strictly forbidden to read, edit, stage, rename, or delete peer files in `reviews/`, ephemeral artifacts (`reviewer_scorecard.md`, `review_prompt.md`, `spec.md`, `plan.md`), or any codebase file.
+   - `BRANCH ISOLATION`: Reviewers are authorized to push ONLY to their assigned review branch (`review/${FEATURE_SLUG}/${REVIEWER_ID}` in Mode A, or `<shared-branch>` in Mode B). Pushing to or mutating `main`, `gemini/${FEATURE_SLUG}`, peer branches, or running `push --force` is strictly prohibited.
+   - `TARGETED STAGING`: Reviewers MUST run ONLY `git add reviews/${REVIEWER_ID}.md` (or `git add review.md`). Running `git add .` or `git add -A` is strictly prohibited.
    - `ABORT ON FOREIGN CONFLICT`: If `git pull --rebase` reports a conflict inside another reviewer's file, immediately run `git rebase --abort` and retry.
-3. **Builder Ingestion Authorship Audit & Tamper Tripwire**:
-   - When pulling shared review branches, the builder verifies commit history scoped to branch commits (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`): each reviewer commit must touch ONLY `reviews/${REVIEWER_ID}.md` matching that reviewer's token.
-   - Any commit touching codebase files, spec/plan, `reviewer_scorecard.md`, or peer files is flagged as `TAMPERED/CLOBBERED` and rejected.
-   - If any reviewer commits changes to `reviewer_scorecard.md` or any unauthorized file, the builder immediately alerts the user with an urgent directive to **TERMINATE / DROP** that reviewer's session.
+3. **Builder Ingestion Authorship Audit & Universal Tamper Tripwire**:
+   - When pulling shared review branches, the builder verifies commit history scoped to branch commits (`git log --name-only origin/${BRANCH_NAME}..FETCH_HEAD`) and remote branch refs.
+   - Any commit touching codebase files, spec/plan, `reviewer_scorecard.md`, or peer files, or attempting to push to an unauthorized branch is flagged as `TAMPERED/CLOBBERED` and rejected.
+   - If any reviewer commits changes to unauthorized files or mutates unauthorized branches, the builder immediately alerts the user with an urgent directive to **TERMINATE / DROP** that reviewer's session.
    - Mode B Review File Lifecycle: At signoff time, review files triaged for the merged SHA are pruned or archived per session retention policy.
 
 ### 3.3c In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)
@@ -127,7 +128,7 @@ To eliminate conversational token bloat and prevent massive prompts from clutter
    ```bash
    git fetch origin ${BRANCH_NAME} && cat ${FEATURE_SLUG}/review_prompt.md
    ```
-5. **Tamper Tripwire & Termination Protocol**: `${FEATURE_SLUG}/reviewer_scorecard.md`, `review_prompt.md`, spec, plan, and codebase files are strictly read-only for external agents. If builder authorship audit detects any unauthorized edit to `reviewer_scorecard.md` or files outside `reviews/${REVIEWER_ID}.md`, the builder immediately alerts the user to terminate that agent's session, moves the agent to the `Drop List`, and rejects the commit.
+5. **Universal Tamper Tripwire & Termination Protocol**: All files outside `reviews/${REVIEWER_ID}.md` (including `reviewer_scorecard.md`, `review_prompt.md`, spec, plan, and codebase files) and all branches outside the assigned review branch are strictly READ-ONLY / UNTOUCHABLE for external agents. If builder authorship audit detects any unauthorized edit or branch push, the builder immediately alerts the user to terminate that agent's session, moves the agent to the `Drop List`, and rejects the commit.
 6. **Automatic Ephemeral Purge**: Because `review_prompt.md` and `reviewer_scorecard.md` reside in `${FEATURE_SLUG}/`, Step 7b's standard cleanup (`git rm -rf --ignore-unmatch "${FEATURE_SLUG}"`) automatically purges them before merge. Zero leftover prompt files pollute the target integration branch.
 
 ### 3.4 Autonomous Triage & Reviewer Signal Scorecard
