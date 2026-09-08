@@ -598,4 +598,191 @@ def test_signoff_phase3c_interview_contract():
     assert "profiles/domain-science.md" in harnesses_content, "Missing domain-science profile reference in HARNESSES.md"
 
 
+def test_external_review_prompts_and_living_branches_contract():
+    """Verify external review prompts, living review branches, Mode A/B, Reviewer Signal Scorecard, and server-truth cleanup contracts."""
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    agents_md = os.path.join(root_dir, "AGENTS.md")
+    gemini_md = os.path.join(root_dir, "GEMINI.md")
+    make_feature_md = os.path.join(root_dir, "skills/make-feature/SKILL.md")
+    adv_review_md = os.path.join(root_dir, "skills/adversarial-review/SKILL.md")
+    gitignore = os.path.join(root_dir, ".gitignore")
+
+    assert os.path.islink(gemini_md), "GEMINI.md must be a symbolic link"
+    assert os.readlink(gemini_md) == "AGENTS.md", "GEMINI.md must point to AGENTS.md"
+
+    with open(agents_md, "r", encoding="utf-8") as f:
+        agents_c = f.read()
+    with open(make_feature_md, "r", encoding="utf-8") as f:
+        mf_c = f.read()
+    with open(adv_review_md, "r", encoding="utf-8") as f:
+        adv_c = f.read()
+    with open(gitignore, "r", encoding="utf-8") as f:
+        gi_c = f.read()
+
+    # 1. .gitignore contains scratch/
+    assert "scratch/" in gi_c, ".gitignore must contain scratch/"
+
+    # 2. Branch naming & grammar & freshness handshake in make-feature/SKILL.md
+    assert "review/${FEATURE_SLUG}/${REVIEWER_ID}" in mf_c, "Missing review branch naming pattern in make-feature SKILL.md"
+    assert "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" in mf_c, "Missing REVIEWER_ID regex grammar in make-feature SKILL.md"
+    assert "AUDITED_SHA:" in mf_c, "Missing AUDITED_SHA handshake in make-feature SKILL.md"
+
+    # 3. Delivery modes: Mode A & Mode B
+    assert "Mode A: Isolated Review Branches" in mf_c, "Missing Mode A in make-feature SKILL.md"
+    assert "Mode B: Shared Sandbox Branch Mode" in mf_c, "Missing Mode B in make-feature SKILL.md"
+    assert "reviews/${REVIEWER_ID}.md" in mf_c, "Missing reviews/${REVIEWER_ID}.md in make-feature SKILL.md"
+    assert "git pull --rebase origin <shared-branch>" in mf_c, "Missing rebase-push retry in make-feature SKILL.md"
+    assert "forbidden from running `push --force` on the shared branch" in mf_c, "Missing ban on force-push in make-feature SKILL.md"
+
+    # 4. Precedence Hierarchy & Reviewer Signal Scorecard
+    precedence = "Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback"
+    assert precedence in mf_c, "Missing Precedence Hierarchy in make-feature SKILL.md"
+    assert "Reviewer Signal Scorecard" in mf_c, "Missing Reviewer Signal Scorecard in make-feature SKILL.md"
+    assert "HIGH SIGNAL" in mf_c, "Missing HIGH SIGNAL in make-feature SKILL.md"
+    assert "LOW SIGNAL / NOISE" in mf_c, "Missing LOW SIGNAL / NOISE in make-feature SKILL.md"
+    assert "UNRESPONSIVE / STUCK" in mf_c, "Missing UNRESPONSIVE / STUCK in make-feature SKILL.md"
+    assert "Retain List" in mf_c, "Missing Retain List directive in make-feature SKILL.md"
+    assert "Drop List" in mf_c, "Missing Drop List directive in make-feature SKILL.md"
+
+    # 5. Server-truth cleanup & Non-merging invariant
+    cleanup_cmd = 'git ls-remote --heads origin "refs/heads/review/${FEATURE_SLUG}/*"'
+    assert cleanup_cmd in mf_c, f"Missing server-truth cleanup '{cleanup_cmd}' in make-feature SKILL.md"
+    assert "PR source MUST be `gemini/${FEATURE_SLUG}`" in mf_c, "Missing PR source requirement in make-feature SKILL.md"
+    assert "never executes unverified" in mf_c, "Missing untrusted input defense in make-feature SKILL.md"
+    assert "scratch/external_reviews/" in mf_c, "Missing fallback ingestion path in make-feature SKILL.md"
+    assert 'git branch -D "$lb"' in mf_c, "Missing local review branch cleanup loop in make-feature SKILL.md"
+    assert "could not verify remote cleanup" in mf_c, "Missing post-delete verification warning in make-feature SKILL.md"
+    assert 'git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"' in mf_c, "Missing builder inspection command in make-feature SKILL.md"
+    assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in mf_c, (
+        "Missing Mode A builder inspection command in make-feature SKILL.md"
+    )
+    assert '{ git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; }' in mf_c, "Missing ancestor guard in make-feature SKILL.md"
+    assert 'git log --name-only "${before}..FETCH_HEAD"' in mf_c, "Missing scoped authorship log in make-feature SKILL.md"
+
+    # 6. Scoped emission anchors across all milestone steps (non-vacuous check)
+    assert "Emit External Review Prompt (Spec Gate)" in mf_c, "Missing Spec Gate emission anchor"
+    assert "Emit External Review Prompt (Plan Gate)" in mf_c, "Missing Plan Gate emission anchor"
+    assert "Emit External Review Prompt (RED Test Gate)" in mf_c, "Missing RED Test Gate emission anchor"
+    assert "Emit External Review Prompt (Heavy Mode Slice Gate)" in mf_c, "Missing Heavy Mode Slice Gate emission anchor"
+    assert "Emit External Review Prompt (GREEN Commit Gate" in mf_c, "Missing GREEN Commit Gate emission anchor"
+    assert "Emit External Review Prompt (GREEN Push Gate" in mf_c, "Missing GREEN Push Gate emission anchor"
+    assert "git diff ${BASE_BRANCH} HEAD" in mf_c, "Missing local-safe offline git diff command in make-feature SKILL.md"
+
+    # 7. Cleanup ordering assertion (purge appears after APPROVE in Step 7b)
+    step7_idx = mf_c.find("Step 7 (Subagent Adversarial Review Loop)")
+    step7b_idx = mf_c.find("Step 7b (Idempotent Ephemeral Cleanup)")
+    step7c_idx = mf_c.find("Step 7c (Ephemeral Post-Review Audit Report Artifact")
+    assert step7_idx != -1 and step7b_idx != -1 and step7c_idx != -1, "Missing Step 7, 7b, or 7c anchors"
+    seg = mf_c[step7b_idx:step7c_idx]
+    assert cleanup_cmd in seg, "Cleanup command must appear within Step 7b"
+    assert 'push origin --delete "$b"' in seg, "Delete loop must appear within Step 7b"
+    assert step7_idx < step7b_idx < step7c_idx, (
+        "Cleanup command must appear in Step 7b after Step 7 review loop in make-feature SKILL.md"
+    )
+
+    # 8. Synchronization in adversarial-review/SKILL.md
+    assert "Mode B: Shared Sandbox Branch Mode" in adv_c, "Missing Mode B in adversarial-review SKILL.md"
+    assert "Reviewer Signal Scorecard" in adv_c, "Missing Reviewer Signal Scorecard in adversarial-review SKILL.md"
+    assert "External PR Action Plan" in adv_c, "Standalone External PR Action Plan must remain intact in adversarial-review SKILL.md"
+    assert "Canonical External Review Prompt Template" in adv_c, "Missing Canonical External Review Prompt Template in adversarial-review SKILL.md"
+    assert "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" in adv_c, "Missing grammar regex in adversarial-review SKILL.md"
+    assert 'git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"' in adv_c, "Missing inspection command in adversarial-review SKILL.md"
+    assert 'git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"' in adv_c, (
+        "Missing Mode A inspection command in adversarial-review SKILL.md"
+    )
+    assert '{ git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; }' in adv_c, "Missing ancestor guard in adversarial-review SKILL.md"
+    assert 'git log --name-only "${before}..FETCH_HEAD"' in adv_c, "Missing scoped authorship log in adversarial-review SKILL.md"
+    assert 'git diff "${BASE_SHA}" FETCH_HEAD' in adv_c, "Missing robust inspection command in adversarial-review SKILL.md"
+
+    # 9. Synchronization in AGENTS.md
+    assert "Reviewer Signal Scorecard" in agents_c, "Missing Reviewer Signal Scorecard in AGENTS.md"
+    assert "Mode B: Shared Sandbox Branch Mode" in agents_c, "Missing Mode B in AGENTS.md"
+
+    # 10. Masked Identity Proof & Session Persistence contract across all documents
+    assert "Reviewer Identification Proof" in mf_c, "Missing Reviewer Identification Proof in make-feature SKILL.md"
+    assert "Session Continuity Directive" in mf_c, "Missing Session Continuity Directive in make-feature SKILL.md"
+    assert "Reviewer Identification Proof" in adv_c, "Missing Reviewer Identification Proof in adversarial-review SKILL.md"
+    assert "Reviewer Identification Proof" in agents_c, "Missing Reviewer Identification Proof in AGENTS.md"
+
+    # 11. Anti-Collision, Peer Isolation & Authorship Invariants
+    assert "FILE ISOLATION" in mf_c, "Missing FILE ISOLATION in make-feature SKILL.md"
+    assert "TARGETED STAGING" in mf_c, "Missing TARGETED STAGING in make-feature SKILL.md"
+    assert "ABORT ON FOREIGN CONFLICT" in mf_c, "Missing ABORT ON FOREIGN CONFLICT in make-feature SKILL.md"
+    assert "Builder Ingestion Authorship Audit" in mf_c, "Missing Builder Ingestion Authorship Audit in make-feature SKILL.md"
+    assert "TAMPERED/CLOBBERED" in mf_c, "Missing TAMPERED/CLOBBERED in make-feature SKILL.md"
+    assert "FILE ISOLATION" in adv_c, "Missing FILE ISOLATION in adversarial-review SKILL.md"
+    assert "TARGETED STAGING" in adv_c, "Missing TARGETED STAGING in adversarial-review SKILL.md"
+    assert "TAMPERED/CLOBBERED" in agents_c, "Missing TAMPERED/CLOBBERED in AGENTS.md"
+
+    # 12. Spec and Plan parity for Identity Proof and Peer Isolation
+    spec_md = os.path.join(root_dir, "external-review-prompts-50ee34/spec.md")
+    plan_md = os.path.join(root_dir, "external-review-prompts-50ee34/plan.md")
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        with open(spec_md, "r", encoding="utf-8") as f:
+            spec_c = f.read()
+        with open(plan_md, "r", encoding="utf-8") as f:
+            plan_c = f.read()
+        assert "Reviewer Identification Proof" in spec_c, "Missing Identity Proof in spec.md"
+        assert "FILE ISOLATION" in spec_c, "Missing FILE ISOLATION in spec.md"
+        assert "Reviewer Identification Proof" in plan_c, "Missing Identity Proof in plan.md"
+
+    # 13. In-Tree Ephemeral Review Prompt Protocol (review_prompt.md)
+    assert "review_prompt.md" in mf_c, "Missing review_prompt.md in make-feature SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"' in mf_c, (
+        "Missing dispatch command in make-feature SKILL.md"
+    )
+    assert "review_prompt.md" in adv_c, "Missing review_prompt.md in adversarial-review SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"' in adv_c, (
+        "Missing dispatch command in adversarial-review SKILL.md"
+    )
+    assert "review_prompt.md" in agents_c, "Missing review_prompt.md in AGENTS.md"
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        assert "review_prompt.md" in spec_c, "Missing review_prompt.md in spec.md"
+        assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"' in spec_c, (
+            "Missing dispatch command in spec.md"
+        )
+        assert "review_prompt.md" in plan_c, "Missing review_prompt.md in plan.md"
+
+    # 14. In-Tree Ephemeral Scorecard Protocol & Tamper Tripwire (reviewer_scorecard.md)
+    assert "reviewer_scorecard.md" in mf_c, "Missing reviewer_scorecard.md in make-feature SKILL.md"
+    assert "Tamper Tripwire" in mf_c, "Missing Tamper Tripwire in make-feature SKILL.md"
+    assert "BRANCH ISOLATION" in mf_c, "Missing BRANCH ISOLATION in make-feature SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"' in mf_c, (
+        "Missing scorecard dispatch pointer in make-feature SKILL.md"
+    )
+    assert "chore: update reviewer scorecard" in mf_c, "Missing scorecard commit cadence in make-feature SKILL.md"
+    assert '[ -f "reviews/${REVIEWER_ID}.md" ]' in mf_c, "Missing collision check in make-feature SKILL.md"
+    assert "Verify-Before-Terminate" in mf_c, "Missing Verify-Before-Terminate in make-feature SKILL.md"
+    assert "reviewer_scorecard.md" in adv_c, "Missing reviewer_scorecard.md in adversarial-review SKILL.md"
+    assert "BRANCH ISOLATION" in adv_c, "Missing BRANCH ISOLATION in adversarial-review SKILL.md"
+    assert "UNIVERSAL TAMPER TRIPWIRE" in adv_c, "Missing UNIVERSAL TAMPER TRIPWIRE in adversarial-review SKILL.md"
+    assert 'git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"' in adv_c, (
+        "Missing scorecard dispatch pointer in adversarial-review SKILL.md"
+    )
+    assert "reviewer_scorecard.md" in agents_c, "Missing reviewer_scorecard.md in AGENTS.md"
+    assert "Tamper Tripwire" in agents_c, "Missing Tamper Tripwire in AGENTS.md"
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        assert "reviewer_scorecard.md" in spec_c, "Missing reviewer_scorecard.md in spec.md"
+        assert "Tamper Tripwire" in spec_c, "Missing Tamper Tripwire in spec.md"
+        assert "Verify-Before-Terminate" in spec_c, "Missing Verify-Before-Terminate in spec.md"
+        assert "reviewer_scorecard.md" in plan_c, "Missing reviewer_scorecard.md in plan.md"
+
+    # 15. External Review Convergence Gate (Retain List Only)
+    assert "External Review Convergence Gate" in mf_c, "Missing Convergence Gate in make-feature SKILL.md"
+    assert "Retain List Only" in mf_c, "Missing Retain List Only in make-feature SKILL.md"
+    assert "Content-Conflict Precedence Hierarchy" in mf_c, "Missing Content-Conflict Precedence Hierarchy in make-feature SKILL.md"
+    assert "Chat Announcement Requirement" in mf_c, "Missing Chat Announcement Requirement in make-feature SKILL.md"
+    assert "Bounded Unresponsiveness Demotion" in mf_c, "Missing Bounded Unresponsiveness Demotion in make-feature SKILL.md"
+    assert "External Review Convergence Gate" in adv_c, "Missing Convergence Gate in adversarial-review SKILL.md"
+    assert "Content-Conflict Precedence Hierarchy" in adv_c, "Missing Content-Conflict Precedence Hierarchy in adversarial-review SKILL.md"
+    assert "External Review Convergence Gate" in agents_c, "Missing Convergence Gate in AGENTS.md"
+    assert "Content-Conflict Precedence Hierarchy" in agents_c, "Missing Content-Conflict Precedence Hierarchy in AGENTS.md"
+    if os.path.exists(spec_md) and os.path.exists(plan_md):
+        assert "External Review Convergence Gate" in spec_c, "Missing Convergence Gate in spec.md"
+        assert "Content-Conflict Precedence Hierarchy" in spec_c, "Missing Content-Conflict Precedence Hierarchy in spec.md"
+        assert not any(re.match(r"^\d{2,4}:\s", line) for line in spec_c.splitlines()), "Corrupted line-number prefixes in spec.md"
+
+
+
+
 

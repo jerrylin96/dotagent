@@ -118,6 +118,63 @@ The following `Core Workflow Rules`, `Context Resolution`, and `Execution Steps`
 - **Review Mode Context**: Set to `internal-pipeline` in compaction block.
 - **Builder-Reviewer Loop**: Parent builder agent handles code edits; reviewer subagent audits and emits `APPROVE` or `REJECT` up to max 3 cycles.
 
+#### 3. Post-Commit/Push External Review & Living Review Branch Mode (Lifecycle Multi-Agent Reviews)
+- **Dispatch Distinction**: Standalone `/adversarial-review` executes a single-pass read-only audit producing the chat contract `External PR Action Plan`. In contrast, post-commit/push external review prompts generated during `/make-feature` (at Spec, Plan, RED Test, GREEN Code, and per-slice gates) solicit asynchronous feedback from external anonymous agents (e.g. Arena.ai) on ephemeral living review branches.
+- **Review Delivery Modes**:
+  - **Mode A: Isolated Review Branches**: Reviewers operate on independent branches `review/${FEATURE_SLUG}/${REVIEWER_ID}` with a mutable checklist in `review.md`.
+    - `REVIEWER_ID` validation: Must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` and MUST NOT contain '..' or end with '.lock'.
+    - Inspect review files via `git show "origin/review/${FEATURE_SLUG}/${REVIEWER_ID}:review.md"`.
+  - **Mode B: Shared Sandbox Branch Mode**: When all external reviewers are pinned to a single shared branch (e.g. Arena.ai):
+    - Reviewers MUST use file-level namespace isolation: write feedback exclusively to `reviews/${REVIEWER_ID}.md` (never modify shared root `review.md`).
+    - Reviewers commit and push via bounded rebase-retry loop: `git pull --rebase origin <shared-branch>` with backoff and abort on conflicts.
+    - Reviewers are strictly forbidden from running `push --force` on the shared branch.
+    - `FILE ISOLATION`: Reviewers own only `reviews/${REVIEWER_ID}.md` and are forbidden from editing or deleting peer files.
+    - `TARGETED STAGING`: Reviewers must run only `git add reviews/${REVIEWER_ID}.md` (never blanket `git add .` or `git add -A`).
+    - `ABORT ON FOREIGN CONFLICT`: On merge/rebase conflict outside `reviews/${REVIEWER_ID}.md`, run `git rebase --abort`.
+    - `Builder Ingestion Authorship Audit & Universal Tamper Tripwire`: Builder verifies commits on shared branch (`git fetch origin <shared-branch> && { git merge-base --is-ancestor "$before" FETCH_HEAD 2>/dev/null || before="origin/${BRANCH_NAME}"; } && git log --name-only "${before}..FETCH_HEAD"`) and validates branch targets (with `before` tracked from prior triaged SHA persisted in `scratchpad.md`; at initial dispatch on a long-lived shared branch, record baseline `before=$(git rev-parse origin/<shared-branch> 2>/dev/null || echo "origin/${BRANCH_NAME}")` to `scratchpad.md`, and guard with ancestor fallback to `origin/${BRANCH_NAME}` to ensure all review commits are audited without false positives). Verify-Before-Terminate: The builder inspects the offending commit diff to confirm unauthorized mutation before issuing a termination alert. If any commit touches any file outside its designated review markdown file (`reviews/${REVIEWER_ID}.md` in Mode B, or `review.md` in Mode A) or pushes to an unauthorized branch, it is flagged `TAMPERED/CLOBBERED`, the builder immediately alerts the user to terminate that agent's session, moves it to the `Drop List`, and rejects the commit.
+    - Inspect review files via paired fetch: `git fetch origin <shared-branch> && git show "FETCH_HEAD:reviews/${REVIEWER_ID}.md"`.
+- **Freshness Handshake**: Every review document MUST include `AUDITED_SHA: <sha>` in the header. If the audited SHA is stale, reviewers re-audit the latest commit.
+- **Masked Identity Proof & Session Persistence**: Prompts require external agents to output a visible `Reviewer Identification Proof` banner at the very top of their chat text response (outside collapsed terminal tool calls) and adhere to the `Session Continuity Directive` (reusing their established `REVIEWER_ID` across prompt turns) so browser tabs are immediately distinguishable by the user.
+- **Reviewer Signal Scorecard & Triage**:
+  - The builder agent triages external reviews according to the Content-Conflict Precedence Hierarchy (`Human Directives / Approved Spec > Code Invariants > External Reviewer Feedback` for content/design disputes; process verification gates pause for confirmation) and applies the Ponytail Senior Dev ladder (`ACCEPT` real bugs vs. `REJECT` unrequested abstractions).
+  - The builder emits a **Reviewer Signal Scorecard** categorizing each external reviewer:
+    - `HIGH SIGNAL`: Concrete P0/P1 bugs caught, falsifiable claims, adhered to format.
+    - `LOW SIGNAL / NOISE`: Vague critique, YAGNI violations, style bikeshedding.
+    - `UNRESPONSIVE / STUCK`: Non-fast-forward failures, unparsed output, timeouts.
+  - The scorecard provides explicit user action directives: **Retain List (`CONTINUE`)** and **Drop List (`STOP`)** so the user knows which review sessions to continue prompting and which to close.
+  - **Universal Tamper Tripwire & Termination Directive**: If any external agent modifies any file outside its designated review markdown file or pushes to an unauthorized branch, the builder immediately alerts the user to terminate that agent's session and adds it to the `Drop List`.
+  - **External Review Convergence Gate (Retain List Only)**: Reviews are closed-loop for high-signal agents. The review cycle does not conclude upon the builder committing a fix; it concludes when all reviewers on the `Retain List (`CONTINUE`)` re-audit and issue a confirmatory `VERDICT: APPROVE` (with `AUDITED_SHA` matching latest feature commit) or mark all items `[x] Resolved`, or the human engineer explicitly overrides. On entering the gate, the builder announces pending reviewers and override options in chat. Retained reviewers failing to re-audit after 2 rounds may be demoted to `UNRESPONSIVE / STUCK` (Drop List). Agents on the `Drop List (`STOP`)` are disregarded. Ephemeral artifacts remain in-tree until this confirmatory handshake is achieved.
+- **In-Tree Ephemeral Review Artifacts (`review_prompt.md` & `reviewer_scorecard.md`)**: To eliminate conversation context bloat, prompt instantiations and living scorecards are saved to in-tree files `${FEATURE_SLUG}/review_prompt.md` and `${FEATURE_SLUG}/reviewer_scorecard.md` (committed and pushed with the milestone). Chat emits only the ultra-compact 2-line dispatch command (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/review_prompt.md"`) and scorecard pointer (`git fetch origin ${BRANCH_NAME} && git show "FETCH_HEAD:${FEATURE_SLUG}/reviewer_scorecard.md"`). Automatically purged at Step 7b.
+
+#### Canonical External Review Prompt Template
+```text
+### Reviewer Identity & Session Continuity Directive
+1. If you ALREADY established your REVIEWER_ID in an earlier turn of this session, YOU MUST REUSE IT. Do NOT generate a new ID.
+2. If this is a fresh session, set your ID matching ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ (no '..' or '.lock'):
+   export REVIEWER_ID="reviewer-$(head -c 3 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo $RANDOM)"
+3. MANDATORY CHAT BANNER: In the very first lines of your chat response, you MUST print:
+   ### 🪪 Reviewer Identification Proof
+   - Reviewer ID: ${REVIEWER_ID}
+   - Target SHA Audited: <sha>
+   - Review File: reviews/${REVIEWER_ID}.md
+   - Push Commit SHA: <your-push-sha or "pending — confirm post-push">
+
+### Anti-Collision & Peer Isolation Invariants
+1. FILE ISOLATION: You own ONLY reviews/${REVIEWER_ID}.md. Repository object-store reads (e.g. git show, git diff) of the audited branch and ephemeral review artifacts are permitted; WRITES to any file outside reviews/${REVIEWER_ID}.md are strictly forbidden. Never modify peer files in reviews/.
+2. BRANCH ISOLATION: You are authorized to push ONLY to the specified review branch. Never push to main, gemini/${FEATURE_SLUG}, or peer branches. Never force-push.
+3. TARGETED STAGING: NEVER run git add . or git add -A. Run ONLY git add reviews/${REVIEWER_ID}.md.
+4. ABORT ON FOREIGN CONFLICT: On conflict outside reviews/${REVIEWER_ID}.md, immediately run git rebase --abort. If caused by duplicate ID (add/add conflict on your own file), regenerate REVIEWER_ID and retry with a fresh file. If retries exhausted, fall back to chat markdown or scratch/external_reviews/<REVIEWER_ID>.md.
+5. UNIVERSAL TAMPER TRIPWIRE: All files outside reviews/${REVIEWER_ID}.md and all branches outside your assigned review branch are strictly READ-ONLY / UNTOUCHABLE. Touching unauthorized files or branches triggers immediate session termination by the user and permanent disqualification.
+
+### Inspection Target
+git fetch origin ${BASE_BRANCH} && BASE_SHA=$(git rev-parse FETCH_HEAD)
+git fetch origin ${BRANCH_NAME} && git diff "${BASE_SHA}" FETCH_HEAD
+
+### Output Protocol & Checkout
+git fetch origin <shared-branch>
+git checkout <shared-branch>
+```
+
 ### Subagent Context Compaction Template
 Parent agents MUST include a compacted context block (≤ 30 lines / ~400 words) when invoking review subagents:
 ```markdown
